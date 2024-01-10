@@ -2,7 +2,7 @@
 
 (* top =  1  *)
 (* generator = "Amaranth" *)
-module tt_um_cmerrill_test(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_in);
+module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_in);
   reg \$auto$verilog_backend.cc:2189:dump_module$1  = 0;
   (* src = "C:\\Users\\chris\\Documents\\Projects\\tt06-cmerrill\\src\\tt_um_cmerrill_test.py:30" *)
   wire \$2 ;
