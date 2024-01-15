@@ -8,6 +8,7 @@ class OE(enum.Enum, shape=1):
     INPUT = 0
     OUTPUT = 1
 
+
 class Top(Elaboratable):
     def __init__(self):
         self.ui_in = Signal(8)    # Dedicated Inputs
@@ -31,20 +32,41 @@ class Top(Elaboratable):
 
         # Boilerplate: Zero unused outputs
         m.d.comb += [
-            self.uio_oe.eq(Const(0)),
+            self.uio_oe.eq(OE.INPUT),
             self.uio_out.eq(Const(0)),
-            #self.uo_out.eq(Const(0)),
+            self.uo_out.eq(Const(0)),
         ]
 
-        # Clocked Adder
-        m.d.sync += [
-            self.uo_out.eq(self.ui_in + self.uio_in),
-        ]
+        # Feedback Loop Variables
+        self.data_in = Signal(signed(8))
+        self.error = Signal(signed(9))
+        self.error_out = Signal(signed(8))
+        self.data_out = Signal(signed(8), reset=-128)
+
+        # Center the data
+        m.d.comb += self.data_in.eq(self.ui_in - Const(-128))
+        m.d.sync += self.error.eq(self.data_in + (self.error_out - self.data_out))
+
+        # Saturating Error Add
+        with m.If(self.error > Const(127)):
+            m.d.comb += self.error_out.eq(Const(127))
+        with m.Elif(self.error < Const(-128)):
+            m.d.comb += self.error_out.eq(Const(-128))
+        with m.Else():
+            m.d.comb += self.error_out.eq(self.error[0:8])
+
+        # PDM It
+        self.pdm_out = Signal(1)
+        with m.If(self.error_out >= Const(0)):
+            m.d.comb += self.data_out.eq(Const(127))
+            m.d.sync += self.pdm_out.eq(Const(1))
+        with m.Else():
+            m.d.comb += self.data_out.eq(Const(-128))
+            m.d.sync += self.pdm_out.eq(Const(0))
+        m.d.comb += self.uo_out[0].eq(self.pdm_out)
 
         # Boilerplate: Return module
         return m
-
-
 
 
 if __name__ == "__main__":
