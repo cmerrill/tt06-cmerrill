@@ -4,56 +4,155 @@
 (* generator = "Amaranth" *)
 module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_in);
   reg \$auto$verilog_backend.cc:2189:dump_module$1  = 0;
-  (* src = "C:\\Users\\chris\\Documents\\Projects\\tt06-cmerrill\\src\\tt_um_cmerrill_test.py:30" *)
+  wire [8:0] \$10 ;
+  wire [9:0] \$12 ;
+  wire \$14 ;
+  wire \$16 ;
+  wire \$18 ;
   wire \$2 ;
-  (* src = "C:\\Users\\chris\\Documents\\Projects\\tt06-cmerrill\\src\\tt_um_cmerrill_test.py:41" *)
-  wire [8:0] \$4 ;
-  (* src = "C:\\Users\\chris\\Documents\\Projects\\tt06-cmerrill\\src\\tt_um_cmerrill_test.py:41" *)
+  wire \$20 ;
+  wire \$22 ;
+  wire \$24 ;
+  wire [8:0] \$26 ;
+  wire [8:0] \$27 ;
+  wire [8:0] \$29 ;
+  wire [8:0] \$30 ;
+  wire [9:0] \$4 ;
   wire [8:0] \$5 ;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
+  wire [9:0] \$7 ;
+  wire [9:0] \$9 ;
   input clk;
   wire clk;
-  (* src = "C:\\Users\\chris\\Documents\\Projects\\tt06-cmerrill\\src\\tt_um_cmerrill_test.py:27" *)
   wire \clk$1 ;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
+  reg [7:0] counter = 8'h00;
+  reg [7:0] \counter$next ;
+  wire [7:0] data_in;
+  reg [7:0] data_out;
   input ena;
   wire ena;
-  (* src = "C:\\Users\\chris\\Documents\\Projects\\tt06-cmerrill\\src\\tt_um_cmerrill_test.py:27" *)
+  reg [8:0] error = 9'h000;
+  reg [8:0] \error$next ;
+  reg [7:0] error_out;
+  reg pdm_out = 1'h0;
+  reg \pdm_out$next ;
+  reg pwm_out = 1'h0;
+  reg \pwm_out$next ;
   wire rst;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
   input rst_n;
   wire rst_n;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
   input [7:0] ui_in;
   wire [7:0] ui_in;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
+  wire [7:0] ui_in_buf;
   input [7:0] uio_in;
   wire [7:0] uio_in;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
   output [7:0] uio_oe;
   wire [7:0] uio_oe;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
   output [7:0] uio_out;
   wire [7:0] uio_out;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
   output [7:0] uo_out;
-  reg [7:0] uo_out = 8'h00;
-  (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\lib\\wiring.py:1647" *)
-  reg [7:0] \uo_out$next ;
-  assign \$2  = ~ (* src = "C:\\Users\\chris\\Documents\\Projects\\tt06-cmerrill\\src\\tt_um_cmerrill_test.py:30" *) rst_n;
-  assign \$5  = ui_in + (* src = "C:\\Users\\chris\\Documents\\Projects\\tt06-cmerrill\\src\\tt_um_cmerrill_test.py:41" *) uio_in;
+  wire [7:0] uo_out;
+  assign \$10  = $signed(error_out) - $signed(data_out);
+  assign \$12  = $signed(data_in) + $signed(\$10 );
+  assign \$14  = $signed(error) > $signed(9'h07f);
+  assign \$16  = $signed(error) < $signed(8'h80);
+  assign \$18  = $signed(error_out) >= $signed(8'h00);
+  assign \$20  = $signed(error_out) >= $signed(8'h00);
+  assign \$22  = counter <= ui_in_buf;
+  assign \$24  = counter <= ui_in_buf;
+  assign \$27  = counter + 1'h1;
+  assign \$2  = ~ rst_n;
+  assign \$30  = counter + 1'h1;
   always @(posedge \clk$1 )
-    uo_out <= \uo_out$next ;
+    error <= \error$next ;
+  always @(posedge \clk$1 )
+    pdm_out <= \pdm_out$next ;
+  always @(posedge \clk$1 )
+    pwm_out <= \pwm_out$next ;
+  always @(posedge \clk$1 )
+    counter <= \counter$next ;
+  assign \$5  = + ui_in_buf;
+  assign \$7  = $signed(\$5 ) - $signed(9'h180);
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
-    \uo_out$next  = \$5 [7:0];
-    (* src = "C:\\Users\\chris\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\site-packages\\amaranth\\hdl\\xfrm.py:503" *)
+    (* full_case = 32'd1 *)
+    casez (\$20 )
+      1'h1:
+          \pdm_out$next  = 1'h1;
+      default:
+          \pdm_out$next  = 1'h0;
+    endcase
     casez (rst)
       1'h1:
-          \uo_out$next  = 8'h00;
+          \pdm_out$next  = 1'h0;
     endcase
   end
-  assign \$4  = \$5 ;
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$22 )
+      1'h1:
+          \pwm_out$next  = 1'h1;
+      default:
+          \pwm_out$next  = 1'h0;
+    endcase
+    casez (rst)
+      1'h1:
+          \pwm_out$next  = 1'h0;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$24 )
+      1'h1:
+          \counter$next  = \$27 [7:0];
+      default:
+          \counter$next  = \$30 [7:0];
+    endcase
+    casez (rst)
+      1'h1:
+          \counter$next  = 8'h00;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    \error$next  = \$12 [8:0];
+    casez (rst)
+      1'h1:
+          \error$next  = 9'h000;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez ({ \$16 , \$14  })
+      2'b?1:
+          error_out = 8'h7f;
+      2'b1?:
+          error_out = 8'h80;
+      default:
+          error_out = error[7:0];
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$18 )
+      1'h1:
+          data_out = 8'h7f;
+      default:
+          data_out = 8'h80;
+    endcase
+  end
+  assign \$4  = \$7 ;
+  assign \$9  = \$12 ;
+  assign \$26  = \$27 ;
+  assign \$29  = \$30 ;
+  assign data_in = \$7 [7:0];
+  assign ui_in_buf = ui_in;
+  assign uo_out[1] = pwm_out;
+  assign uo_out[0] = pdm_out;
+  assign uo_out[7:2] = 6'h00;
   assign uio_out = 8'h00;
   assign uio_oe = 8'h00;
   assign rst = \$2 ;

@@ -28,13 +28,21 @@ class Top(Elaboratable):
         m.d.comb += [
             cd_sync.clk.eq(self.clk),
             cd_sync.rst.eq(~self.rst_n),
+            # cd_sync.rst.eq(Const(0)), # Testbench: force out of reset
         ]
 
         # Boilerplate: Zero unused outputs
         m.d.comb += [
-            self.uio_oe.eq(OE.INPUT),
+            self.uio_oe.eq(Cat(*[OE.INPUT]*8)), # IO pins set as input (not output)
             self.uio_out.eq(Const(0)),
             self.uo_out.eq(Const(0)),
+        ]
+
+        # Testbench: Set fixed PDM value
+        self.ui_in_buf = Signal(unsigned(8))
+        m.d.comb += [
+            self.ui_in_buf.eq(self.ui_in),
+            # self.ui_in_buf.eq(Const(121, 8)),
         ]
 
         # Feedback Loop Variables
@@ -44,7 +52,7 @@ class Top(Elaboratable):
         self.data_out = Signal(signed(8), reset=-128)
 
         # Center the data
-        m.d.comb += self.data_in.eq(self.ui_in - Const(-128))
+        m.d.comb += self.data_in.eq(self.ui_in_buf - Const(-128))
         m.d.sync += self.error.eq(self.data_in + (self.error_out - self.data_out))
 
         # Saturating Error Add
@@ -64,6 +72,18 @@ class Top(Elaboratable):
             m.d.comb += self.data_out.eq(Const(-128))
             m.d.sync += self.pdm_out.eq(Const(0))
         m.d.comb += self.uo_out[0].eq(self.pdm_out)
+
+        # PWM It
+        # FIXME: Do we need to buffer the input based on full PWM loops?
+        self.counter = Signal(unsigned(8))
+        self.pwm_out = Signal(1)
+        with m.If(self.counter <= self.ui_in_buf):
+            m.d.sync += self.pwm_out.eq(Const(1))
+            m.d.sync += self.counter.eq(self.counter + 1)
+        with m.Else():
+            m.d.sync += self.pwm_out.eq(Const(0))
+            m.d.sync += self.counter.eq(self.counter + 1)
+        m.d.comb += self.uo_out[1].eq(self.pwm_out)
 
         # Boilerplate: Return module
         return m
