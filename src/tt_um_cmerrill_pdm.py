@@ -38,11 +38,10 @@ class Top(Elaboratable):
             self.uo_out.eq(Const(0)),
         ]
 
-        # Testbench: Set fixed PDM value
         self.ui_in_buf = Signal(unsigned(8))
         m.d.comb += [
             self.ui_in_buf.eq(self.ui_in),
-            # self.ui_in_buf.eq(Const(255, 8)),
+            # self.ui_in_buf.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
         ]
 
         # Feedback Loop Variables
@@ -63,6 +62,7 @@ class Top(Elaboratable):
         with m.Else():
             m.d.comb += self.error_out.eq(self.error[0:8])
 
+
         # PDM It
         self.pdm_out = Signal(1)
         with m.If(self.error_out >= Const(0)):
@@ -73,18 +73,54 @@ class Top(Elaboratable):
             m.d.sync += self.pdm_out.eq(Const(0))
         m.d.comb += self.uo_out[0].eq(self.pdm_out)
 
+
         # PWM It
         # FIXME: Do we need to buffer the input based on full PWM loops?
-        self.counter = Signal(unsigned(8))
+        self.pwm_counter = Signal(unsigned(8))
         self.pwm_out = Signal(1)
-        with m.If(self.counter <= self.ui_in_buf):
+        with m.If(self.pwm_counter <= self.ui_in_buf):
             m.d.sync += self.pwm_out.eq(Const(1))
-            m.d.sync += self.counter.eq(self.counter + 1)
         with m.Else():
             m.d.sync += self.pwm_out.eq(Const(0))
-            m.d.sync += self.counter.eq(self.counter + 1)
+        m.d.sync += self.pwm_counter.eq(self.pwm_counter + 1)
         m.d.comb += self.uo_out[4].eq(self.pwm_out)
 
+
+        # PFM(?) It
+        # FIXME: Do we need to buffer the input based on full loops?
+        self.pfm_counter = Signal(unsigned(9))
+        self.pfm_out = Signal(1)
+        self.pfm_in = Signal(unsigned(8))
+        m.d.comb += self.pfm_in.eq(Const(255) - self.ui_in_buf)
+        with m.If(((self.pfm_counter >> 1) == self.pfm_in)
+                    & (self.pfm_counter[0] == Const(1))): # Divide clock by two so that we always have a square wave
+            m.d.sync += self.pfm_out.eq(Const(1))
+            m.d.sync += self.pfm_counter.eq(Const(0))
+        with m.Else():
+            m.d.sync += self.pfm_out.eq(Const(0))
+            m.d.sync += self.pfm_counter.eq(self.pfm_counter + 1)
+        m.d.comb += self.uo_out[2].eq(self.pfm_out)
+
+
+        # PFM(?) It, V2
+        # FIXME: Do we need to buffer the input based on full loops?
+        # FIXME: I'm guessing there could be some weikrd off-by-1-errors somewhere with all these shifts
+        self.pfm2_counter = Signal(unsigned(9))
+        self.pfm2_out = Signal(1)
+        self.pfm2_in = Signal(unsigned(9))
+        m.d.comb += self.pfm2_in.eq((Const(255) - self.ui_in_buf) << 1)
+        with m.If(self.pfm2_counter >= (self.pfm2_in >> 1)):
+            m.d.sync += self.pfm2_out.eq(Const(1))
+        with m.Else():
+            m.d.sync += self.pfm2_out.eq(Const(0))
+        # Counter
+        with m.If(self.pfm2_counter > self.pfm2_in):
+            m.d.sync += self.pfm2_counter.eq(Const(0))
+        with m.Else():
+            m.d.sync += self.pfm2_counter.eq(self.pfm2_counter + 1)
+        # Output
+        m.d.comb += self.uo_out[3].eq(self.pfm2_out)
+            
         # Boilerplate: Return module
         return m
 

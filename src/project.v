@@ -12,20 +12,35 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   wire \$2 ;
   wire \$20 ;
   wire \$22 ;
-  wire \$24 ;
-  wire [8:0] \$26 ;
+  wire [8:0] \$24 ;
+  wire [8:0] \$25 ;
   wire [8:0] \$27 ;
-  wire [8:0] \$29 ;
+  wire [8:0] \$28 ;
   wire [8:0] \$30 ;
+  wire \$32 ;
+  wire \$34 ;
+  wire \$36 ;
+  wire [8:0] \$38 ;
   wire [9:0] \$4 ;
+  wire \$40 ;
+  wire \$42 ;
+  wire \$44 ;
+  wire [9:0] \$46 ;
+  wire [9:0] \$47 ;
+  wire [9:0] \$49 ;
   wire [8:0] \$5 ;
+  wire [8:0] \$50 ;
+  wire [9:0] \$52 ;
+  wire [8:0] \$54 ;
+  wire \$56 ;
+  wire \$58 ;
+  wire [9:0] \$60 ;
+  wire [9:0] \$61 ;
   wire [9:0] \$7 ;
   wire [9:0] \$9 ;
   input clk;
   wire clk;
   wire \clk$1 ;
-  reg [7:0] counter = 8'h00;
-  reg [7:0] \counter$next ;
   wire [7:0] data_in;
   reg [7:0] data_out;
   input ena;
@@ -35,6 +50,18 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   reg [7:0] error_out;
   reg pdm_out = 1'h0;
   reg \pdm_out$next ;
+  reg [8:0] pfm2_counter = 9'h000;
+  reg [8:0] \pfm2_counter$next ;
+  wire [8:0] pfm2_in;
+  reg pfm2_out = 1'h0;
+  reg \pfm2_out$next ;
+  reg [8:0] pfm_counter = 9'h000;
+  reg [8:0] \pfm_counter$next ;
+  wire [7:0] pfm_in;
+  reg pfm_out = 1'h0;
+  reg \pfm_out$next ;
+  reg [7:0] pwm_counter = 8'h00;
+  reg [7:0] \pwm_counter$next ;
   reg pwm_out = 1'h0;
   reg \pwm_out$next ;
   wire rst;
@@ -57,11 +84,20 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   assign \$16  = $signed(error) < $signed(8'h80);
   assign \$18  = $signed(error_out) >= $signed(8'h00);
   assign \$20  = $signed(error_out) >= $signed(8'h00);
-  assign \$22  = counter <= ui_in_buf;
-  assign \$24  = counter <= ui_in_buf;
-  assign \$27  = counter + 1'h1;
+  assign \$22  = pwm_counter <= ui_in_buf;
+  assign \$25  = pwm_counter + 1'h1;
+  assign \$28  = 8'hff - ui_in_buf;
   assign \$2  = ~ rst_n;
-  assign \$30  = counter + 1'h1;
+  assign \$32  = \$30  == pfm_in;
+  assign \$36  = \$32  & \$34 ;
+  assign \$40  = \$38  == pfm_in;
+  assign \$44  = \$40  & \$42 ;
+  assign \$47  = pfm_counter + 1'h1;
+  assign \$50  = 8'hff - ui_in_buf;
+  assign \$56  = pfm2_counter >= \$54 ;
+  assign \$58  = pfm2_counter > pfm2_in;
+  assign \$5  = + ui_in_buf;
+  assign \$61  = pfm2_counter + 1'h1;
   always @(posedge \clk$1 )
     error <= \error$next ;
   always @(posedge \clk$1 )
@@ -69,8 +105,15 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   always @(posedge \clk$1 )
     pwm_out <= \pwm_out$next ;
   always @(posedge \clk$1 )
-    counter <= \counter$next ;
-  assign \$5  = + ui_in_buf;
+    pwm_counter <= \pwm_counter$next ;
+  always @(posedge \clk$1 )
+    pfm_out <= \pfm_out$next ;
+  always @(posedge \clk$1 )
+    pfm_counter <= \pfm_counter$next ;
+  always @(posedge \clk$1 )
+    pfm2_out <= \pfm2_out$next ;
+  always @(posedge \clk$1 )
+    pfm2_counter <= \pfm2_counter$next ;
   assign \$7  = $signed(\$5 ) - $signed(9'h180);
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
@@ -102,16 +145,66 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   end
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
-    (* full_case = 32'd1 *)
-    casez (\$24 )
+    \pwm_counter$next  = \$25 [7:0];
+    casez (rst)
       1'h1:
-          \counter$next  = \$27 [7:0];
+          \pwm_counter$next  = 8'h00;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$36 )
+      1'h1:
+          \pfm_out$next  = 1'h1;
       default:
-          \counter$next  = \$30 [7:0];
+          \pfm_out$next  = 1'h0;
     endcase
     casez (rst)
       1'h1:
-          \counter$next  = 8'h00;
+          \pfm_out$next  = 1'h0;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$44 )
+      1'h1:
+          \pfm_counter$next  = 9'h000;
+      default:
+          \pfm_counter$next  = \$47 [8:0];
+    endcase
+    casez (rst)
+      1'h1:
+          \pfm_counter$next  = 9'h000;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$56 )
+      1'h1:
+          \pfm2_out$next  = 1'h1;
+      default:
+          \pfm2_out$next  = 1'h0;
+    endcase
+    casez (rst)
+      1'h1:
+          \pfm2_out$next  = 1'h0;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$58 )
+      1'h1:
+          \pfm2_counter$next  = 9'h000;
+      default:
+          \pfm2_counter$next  = \$61 [8:0];
+    endcase
+    casez (rst)
+      1'h1:
+          \pfm2_counter$next  = 9'h000;
     endcase
   end
   always @* begin
@@ -146,15 +239,28 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   end
   assign \$4  = \$7 ;
   assign \$9  = \$12 ;
-  assign \$26  = \$27 ;
-  assign \$29  = \$30 ;
+  assign \$24  = \$25 ;
+  assign \$27  = \$28 ;
+  assign \$46  = \$47 ;
+  assign \$49  = \$52 ;
+  assign \$60  = \$61 ;
+  assign pfm2_in = \$52 [8:0];
+  assign pfm_in = \$28 [7:0];
   assign data_in = \$7 [7:0];
   assign ui_in_buf = ui_in;
-  assign uo_out[1] = pwm_out;
+  assign uo_out[3] = pfm2_out;
+  assign uo_out[2] = pfm_out;
+  assign uo_out[4] = pwm_out;
   assign uo_out[0] = pdm_out;
-  assign uo_out[7:2] = 6'h00;
+  assign { uo_out[7:5], uo_out[1] } = 4'h0;
   assign uio_out = 8'h00;
   assign uio_oe = 8'h00;
   assign rst = \$2 ;
   assign \clk$1  = clk;
+  assign \$30  = { 1'h0, pfm_counter[8:1] };
+  assign \$34  = pfm_counter[0];
+  assign \$38  = { 1'h0, pfm_counter[8:1] };
+  assign \$42  = pfm_counter[0];
+  assign \$52  = { \$50 , 1'h0 };
+  assign \$54  = { 1'h0, \$52 [8:1] };
 endmodule
