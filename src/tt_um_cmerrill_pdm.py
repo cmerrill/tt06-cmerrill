@@ -42,7 +42,7 @@ class Top(Elaboratable):
         self.ui_in_buf = Signal(unsigned(8))
         m.d.comb += [
             self.ui_in_buf.eq(self.ui_in),
-            # self.ui_in_buf.eq(Const(121, 8)),
+            # self.ui_in_buf.eq(Const(255, 8)),
         ]
 
         # Feedback Loop Variables
@@ -83,7 +83,7 @@ class Top(Elaboratable):
         with m.Else():
             m.d.sync += self.pwm_out.eq(Const(0))
             m.d.sync += self.counter.eq(self.counter + 1)
-        m.d.comb += self.uo_out[1].eq(self.pwm_out)
+        m.d.comb += self.uo_out[4].eq(self.pwm_out)
 
         # Boilerplate: Return module
         return m
