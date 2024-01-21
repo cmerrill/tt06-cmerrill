@@ -126,16 +126,16 @@ class Top(Elaboratable):
             m.d.sync += self.spi_data_out.eq(spi_data_live)
 
         # Select how we get the input data (parallel, SPI)
-        self.ui_in_buf = Signal(unsigned(8))
+        self.ui_in_sel = Signal(unsigned(8))
         with m.Switch(self.uio_in[7]):
             with m.Case(Const(0)): 
                 m.d.comb += [
-                    self.ui_in_buf.eq(self.ui_in),
-                    # self.ui_in_buf.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
+                    self.ui_in_sel.eq(self.ui_in),
+                    # self.ui_in_sel.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
                 ]
             with m.Case(Const(1)):
                 m.d.comb += [
-                    self.ui_in_buf.eq(self.spi_data_out),
+                    self.ui_in_sel.eq(self.spi_data_out),
                 ]
 
         ## PDM Implementation
@@ -146,7 +146,7 @@ class Top(Elaboratable):
         self.data_out = Signal(signed(8), reset=-128)
 
         # Center the data
-        m.d.comb += self.data_in.eq(self.ui_in_buf - Const(-128))
+        m.d.comb += self.data_in.eq(self.ui_in_sel - Const(-128))
         m.d.sync += self.error.eq(self.data_in + (self.error_out - self.data_out))
 
         # Saturating Error Add
@@ -172,7 +172,7 @@ class Top(Elaboratable):
         # FIXME: Do we need to buffer the input based on full PWM loops?
         self.pwm_counter = Signal(unsigned(8))
         self.pwm_out = Signal(1)
-        with m.If(self.pwm_counter <= self.ui_in_buf):
+        with m.If(self.pwm_counter <= self.ui_in_sel):
             m.d.sync += self.pwm_out.eq(Const(1))
         with m.Else():
             m.d.sync += self.pwm_out.eq(Const(0))
@@ -185,7 +185,7 @@ class Top(Elaboratable):
         self.pfm_counter = Signal(unsigned(9))
         self.pfm_out = Signal(1)
         self.pfm_in = Signal(unsigned(8))
-        m.d.comb += self.pfm_in.eq(Const(255) - self.ui_in_buf)
+        m.d.comb += self.pfm_in.eq(Const(255) - self.ui_in_sel)
         with m.If(((self.pfm_counter >> 1) == self.pfm_in)
                     & (self.pfm_counter[0] == Const(1))): # Divide clock by two so that we always have a square wave
             m.d.sync += self.pfm_out.eq(Const(1))
@@ -201,7 +201,7 @@ class Top(Elaboratable):
         self.pfm2_counter = Signal(unsigned(9))
         self.pfm2_out = Signal(1)
         self.pfm2_in = Signal(unsigned(9))
-        m.d.comb += self.pfm2_in.eq((Const(255) - self.ui_in_buf) << 1)
+        m.d.comb += self.pfm2_in.eq((Const(255) - self.ui_in_sel) << 1)
         with m.If(self.pfm2_counter >= (self.pfm2_in >> 1)):
             m.d.sync += self.pfm2_out.eq(Const(1))
         with m.Else():
