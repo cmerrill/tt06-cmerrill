@@ -1,14 +1,44 @@
 from amaranth import *
 from amaranth.cli import main
 from amaranth.lib import enum
-
-from amaranth.lib.coding import GrayEncoder
-from amaranth.hdl.ast  import Rose, Fell
+from amaranth.lib.cdc  import FFSynchronizer
 
 
 class OE(enum.Enum, shape=1):
     INPUT = 0
     OUTPUT = 1
+
+
+class EdgeDetect(Elaboratable):
+    def __init__(self, edge="pos"):
+        self.inp = Signal(1)
+        self.out = Signal(1)
+        self.clk = Signal(1)
+        self.rst = Signal(1)
+        self._edge = edge
+
+    def elaborate(self, platform):
+        m = Module()
+
+        # Setup clock domain
+        m.domains.clock_domain = clock_domain = ClockDomain(local=True)
+        m.d.comb += [
+            clock_domain.clk.eq(self.clk),
+            clock_domain.rst.eq(self.rst),
+        ]
+
+        # Edge detect - comapred delayed signal with current value
+        # Output is a single-clock width pulse on an edge
+        input_buf = Signal(1)
+        m.d.clock_domain += input_buf.eq(self.inp)
+        if self._edge == "pos":
+            m.d.comb += self.out.eq((~input_buf) & self.inp)
+        elif self._edge == "neg":
+            m.d.comb += self.out.eq(input_buf & (~self.inp))
+        else:
+            raise Exception("Edge must be 'pos' or 'neg'.")
+        
+        return m
 
 
 class SPIShiftReg(Elaboratable):
@@ -25,17 +55,18 @@ class SPIShiftReg(Elaboratable):
         m = Module()
 
         # Boilerplate: Set up sclk clock domain
-        m.domains.sclk = sclk_domain = ClockDomain("sclk", local=True, clk_edge=self._edge)
+        m.domains.spi = sclk_domain = ClockDomain("spi", local=True, clk_edge=self._edge)
         if self._clk_inv:
             m.d.comb += sclk_domain.clk.eq(self.sclk)
-        else: 
+        else:
             m.d.comb += sclk_domain.clk.eq(~self.sclk)
         m.d.comb += sclk_domain.rst.eq(self.reset)
 
+        # Assumes MSB first
         with m.If(self.cs_l == Const(0)):
             for i in range(len(self.dout) - 1):
-                m.d.sclk += self.dout[i+1].eq(self.dout[i])
-            m.d.sclk += self.dout[0].eq(self.sdi)
+                m.d.spi += self.dout[i+1].eq(self.dout[i])
+            m.d.spi += self.dout[0].eq(self.sdi)
 
         return m
         
@@ -69,12 +100,43 @@ class Top(Elaboratable):
             self.uo_out.eq(Const(0)),
         ]
 
+        # Serial data input shift register
+        self.spi_data_out = Signal(8)
+        spi_data_live = Signal(8)
+        cs_out = Signal(1)
+        self.spi_bus_in = SPIShiftReg(width=8)
+        m.submodules.spi = self.spi_bus_in
+        m.d.comb += [
+            self.spi_bus_in.reset.eq(~self.rst_n),
+            self.spi_bus_in.cs_l.eq(self.uio_in[4]),
+            self.spi_bus_in.sclk.eq(self.uio_in[5]),
+            self.spi_bus_in.sdi.eq(self.uio_in[6]),
+        ]
+        m.submodules.spi_cdc = FFSynchronizer(self.spi_bus_in.dout, spi_data_live)
+        m.submodules.spi_cs_cdc = FFSynchronizer(self.spi_bus_in.cs_l, cs_out)
+
+        # CS Rising Edge Detector
+        m.submodules.cs_edge_detect = cs_edge_detect = EdgeDetect("pos")
+        m.d.comb += [
+            cs_edge_detect.clk.eq(ClockSignal("sync")),
+            cs_edge_detect.rst.eq(ResetSignal("sync")),
+            cs_edge_detect.inp.eq(cs_out),
+        ]
+        with m.If(cs_edge_detect.out):
+            m.d.sync += self.spi_data_out.eq(spi_data_live)
+
         # Select how we get the input data (parallel, SPI)
         self.ui_in_buf = Signal(unsigned(8))
-        m.d.comb += [
-            self.ui_in_buf.eq(self.ui_in),
-            # self.ui_in_buf.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
-        ]
+        with m.Switch(self.uio_in[7]):
+            with m.Case(Const(0)): 
+                m.d.comb += [
+                    self.ui_in_buf.eq(self.ui_in),
+                    # self.ui_in_buf.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
+                ]
+            with m.Case(Const(1)):
+                m.d.comb += [
+                    self.ui_in_buf.eq(self.spi_data_out),
+                ]
 
         ## PDM Implementation
         # Feedback Loop Variables
