@@ -3,11 +3,42 @@ from amaranth.cli import main
 from amaranth.lib import enum
 
 from amaranth.lib.coding import GrayEncoder
+from amaranth.hdl.ast  import Rose, Fell
+
 
 class OE(enum.Enum, shape=1):
     INPUT = 0
     OUTPUT = 1
 
+
+class SPIShiftReg(Elaboratable):
+    def __init__(self, width=8, edge="pos", clk_inv=False):
+        self._edge = edge
+        self._clk_inv = clk_inv
+        self.sdi = Signal(1)
+        self.sclk = Signal(1)
+        self.cs_l = Signal(1)
+        self.dout = Signal(width)
+        self.reset = Signal(1)
+    
+    def elaborate(self, platform):
+        m = Module()
+
+        # Boilerplate: Set up sclk clock domain
+        m.domains.sclk = sclk_domain = ClockDomain("sclk", local=True, clk_edge=self._edge)
+        if self._clk_inv:
+            m.d.comb += sclk_domain.clk.eq(self.sclk)
+        else: 
+            m.d.comb += sclk_domain.clk.eq(~self.sclk)
+        m.d.comb += sclk_domain.rst.eq(self.reset)
+
+        with m.If(self.cs_l == Const(0)):
+            for i in range(len(self.dout) - 1):
+                m.d.sclk += self.dout[i+1].eq(self.dout[i])
+            m.d.sclk += self.dout[0].eq(self.sdi)
+
+        return m
+        
 
 class Top(Elaboratable):
     def __init__(self):
@@ -33,17 +64,19 @@ class Top(Elaboratable):
 
         # Boilerplate: Zero unused outputs
         m.d.comb += [
-            self.uio_oe.eq(Cat(*[OE.INPUT]*8)), # IO pins set as input (not output)
+            self.uio_oe.eq(Repl(OE.INPUT,8)), # IO pins set as input (not output)
             self.uio_out.eq(Const(0)),
             self.uo_out.eq(Const(0)),
         ]
 
+        # Select how we get the input data (parallel, SPI)
         self.ui_in_buf = Signal(unsigned(8))
         m.d.comb += [
             self.ui_in_buf.eq(self.ui_in),
             # self.ui_in_buf.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
         ]
 
+        ## PDM Implementation
         # Feedback Loop Variables
         self.data_in = Signal(signed(8))
         self.error = Signal(signed(9))
@@ -62,7 +95,6 @@ class Top(Elaboratable):
         with m.Else():
             m.d.comb += self.error_out.eq(self.error[0:8])
 
-
         # PDM It
         self.pdm_out = Signal(1)
         with m.If(self.error_out >= Const(0)):
@@ -73,7 +105,7 @@ class Top(Elaboratable):
             m.d.sync += self.pdm_out.eq(Const(0))
         m.d.comb += self.uo_out[0].eq(self.pdm_out)
 
-
+        ## PWM Implementation
         # PWM It
         # FIXME: Do we need to buffer the input based on full PWM loops?
         self.pwm_counter = Signal(unsigned(8))
@@ -85,7 +117,7 @@ class Top(Elaboratable):
         m.d.sync += self.pwm_counter.eq(self.pwm_counter + 1)
         m.d.comb += self.uo_out[4].eq(self.pwm_out)
 
-
+        ## PFM Implementations
         # PFM(?) It
         # FIXME: Do we need to buffer the input based on full loops?
         self.pfm_counter = Signal(unsigned(9))
@@ -101,10 +133,9 @@ class Top(Elaboratable):
             m.d.sync += self.pfm_counter.eq(self.pfm_counter + 1)
         m.d.comb += self.uo_out[2].eq(self.pfm_out)
 
-
         # PFM(?) It, V2
         # FIXME: Do we need to buffer the input based on full loops?
-        # FIXME: I'm guessing there could be some weikrd off-by-1-errors somewhere with all these shifts
+        #        Does that even make sense with PFM like this?
         self.pfm2_counter = Signal(unsigned(9))
         self.pfm2_out = Signal(1)
         self.pfm2_in = Signal(unsigned(9))
