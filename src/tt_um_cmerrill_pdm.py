@@ -43,16 +43,29 @@ class EdgeDetect(Elaboratable):
 
 class SPIShiftReg(Elaboratable):
     def __init__(self, width=8, edge="pos", clk_inv=False):
+        # Configuration
         self._edge = edge
         self._clk_inv = clk_inv
+        # SPI Input Signals
         self.sdi = Signal(1)
         self.sclk = Signal(1)
         self.cs_l = Signal(1)
+        # Standard clock domain signals
+        self.res = Signal(1)
+        self.clk = Signal(1)
+        # Output signals
         self.dout = Signal(width)
-        self.reset = Signal(1)
+        self.cs_out = Signal(1)
     
     def elaborate(self, platform):
         m = Module()
+
+        # Boilerplate: Set up sync clock domain
+        m.domains.sync = sync_domain = ClockDomain(local=True)
+        m.d.comb += [
+            sync_domain.clk.eq(self.clk),
+            sync_domain.res.eq(self.res),
+        ]
 
         # Boilerplate: Set up sclk clock domain
         m.domains.spi = sclk_domain = ClockDomain("spi", local=True, clk_edge=self._edge)
@@ -60,13 +73,18 @@ class SPIShiftReg(Elaboratable):
             m.d.comb += sclk_domain.clk.eq(self.sclk)
         else:
             m.d.comb += sclk_domain.clk.eq(~self.sclk)
-        m.d.comb += sclk_domain.rst.eq(self.reset)
+        m.d.comb += sclk_domain.rst.eq(self.res)
 
         # Assumes MSB first
+        spi_data_live = Signal(len(self.dout))
         with m.If(self.cs_l == Const(0)):
-            for i in range(len(self.dout) - 1):
-                m.d.spi += self.dout[i+1].eq(self.dout[i])
-            m.d.spi += self.dout[0].eq(self.sdi)
+            for i in reversed(range(len(spi_data_live) - 1)):
+                m.d.spi += spi_data_live[i+1].eq(spi_data_live[i])
+            m.d.spi += spi_data_live[0].eq(self.sdi)
+        
+        # Shift to CS clock domain
+        m.submodules.spi_data_cdc = FFSynchronizer(spi_data_live, self.dout)
+        m.submodules.spi_cs_cdc = FFSynchronizer(self.cs_l, self.cs_out)
 
         return m
         
@@ -101,42 +119,38 @@ class Top(Elaboratable):
         ]
 
         # Serial data input shift register
-        self.spi_data_out = Signal(8)
-        spi_data_live = Signal(8)
-        cs_out = Signal(1)
-        self.spi_bus_in = SPIShiftReg(width=8)
-        m.submodules.spi = self.spi_bus_in
+        cs_signal = Signal(1)
+        m.d.comb += cs_signal.eq(self.uio_in[4])
+        m.submodules.spi = self.spi_bus_in = SPIShiftReg(width=8)
         m.d.comb += [
             self.spi_bus_in.reset.eq(~self.rst_n),
-            self.spi_bus_in.cs_l.eq(self.uio_in[4]),
+            self.spi_bus_in.cs_l.eq(cs_signal),
             self.spi_bus_in.sclk.eq(self.uio_in[5]),
             self.spi_bus_in.sdi.eq(self.uio_in[6]),
         ]
-        m.submodules.spi_cdc = FFSynchronizer(self.spi_bus_in.dout, spi_data_live)
-        m.submodules.spi_cs_cdc = FFSynchronizer(self.spi_bus_in.cs_l, cs_out)
 
         # CS Rising Edge Detector
         m.submodules.cs_edge_detect = cs_edge_detect = EdgeDetect("pos")
         m.d.comb += [
             cs_edge_detect.clk.eq(ClockSignal("sync")),
             cs_edge_detect.rst.eq(ResetSignal("sync")),
-            cs_edge_detect.inp.eq(cs_out),
+            cs_edge_detect.inp.eq(cs_signal),
         ]
-        with m.If(cs_edge_detect.out):
-            m.d.sync += self.spi_data_out.eq(spi_data_live)
 
         # Select how we get the input data (parallel, SPI)
         self.ui_in_sel = Signal(unsigned(8))
+        ui_in_sel_mux = Signal(unsigned(8))
         with m.Switch(self.uio_in[7]):
             with m.Case(Const(0)): 
                 m.d.comb += [
-                    self.ui_in_sel.eq(self.ui_in),
+                    ui_in_sel_mux.eq(self.ui_in),
                     # self.ui_in_sel.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
                 ]
             with m.Case(Const(1)):
-                m.d.comb += [
-                    self.ui_in_sel.eq(self.spi_data_out),
-                ]
+                m.d.comb += ui_in_sel_mux.eq(self.spi_bus_in.dout),
+        # Latch Data on low to high edge on CS_L/Latch
+        with m.If(cs_edge_detect.out):
+            m.d.sync += self.ui_in_sel.eq(ui_in_sel_mux)
 
         ## PDM Implementation
         # Feedback Loop Variables
@@ -186,7 +200,7 @@ class Top(Elaboratable):
         self.pfm_out = Signal(1)
         self.pfm_in = Signal(unsigned(8))
         m.d.comb += self.pfm_in.eq(Const(255) - self.ui_in_sel)
-        with m.If(((self.pfm_counter >> 1) == self.pfm_in)
+        with m.If(((self.pfm_counter >> 1) >= self.pfm_in)
                     & (self.pfm_counter[0] == Const(1))): # Divide clock by two so that we always have a square wave
             m.d.sync += self.pfm_out.eq(Const(1))
             m.d.sync += self.pfm_counter.eq(Const(0))
