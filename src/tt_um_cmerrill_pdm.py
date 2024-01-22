@@ -50,7 +50,7 @@ class SPIShiftReg(Elaboratable):
         m = Module()
 
         # Boilerplate: Set up sclk clock domain
-        m.domains.spi = sclk_domain = ClockDomain("spi", local=True, clk_edge=self._edge)
+        m.domains.spi = sclk_domain = ClockDomain("spi", local=True, clk_edge=self._edge, async_reset=True)
         if self._clk_inv:
             m.d.comb += sclk_domain.clk.eq(self.sclk)
         else:
