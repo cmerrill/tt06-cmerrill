@@ -4,33 +4,30 @@
 (* generator = "Amaranth" *)
 module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_in);
   reg \$auto$verilog_backend.cc:2189:dump_module$1  = 0;
-  wire [8:0] \$11 ;
+  wire [8:0] \$10 ;
   wire [8:0] \$12 ;
-  wire [8:0] \$14 ;
-  wire [8:0] \$15 ;
-  wire [8:0] \$17 ;
-  wire \$19 ;
+  wire \$14 ;
+  wire \$16 ;
+  wire \$18 ;
   wire \$2 ;
-  wire \$21 ;
-  wire \$23 ;
-  wire [8:0] \$25 ;
-  wire \$27 ;
-  wire \$29 ;
-  wire \$31 ;
-  wire [9:0] \$33 ;
+  wire [8:0] \$20 ;
+  wire \$22 ;
+  wire \$24 ;
+  wire \$26 ;
+  wire [9:0] \$28 ;
+  wire [9:0] \$29 ;
+  wire [9:0] \$31 ;
+  wire [8:0] \$32 ;
   wire [9:0] \$34 ;
-  wire [9:0] \$36 ;
-  wire [8:0] \$37 ;
-  wire [9:0] \$39 ;
+  wire [8:0] \$36 ;
+  wire \$38 ;
   wire [9:0] \$4 ;
-  wire [8:0] \$41 ;
-  wire \$43 ;
-  wire \$45 ;
-  wire [9:0] \$47 ;
-  wire [9:0] \$48 ;
+  wire \$40 ;
+  wire [9:0] \$42 ;
+  wire [9:0] \$43 ;
   wire [8:0] \$5 ;
   wire [9:0] \$7 ;
-  wire \$9 ;
+  wire [8:0] \$9 ;
   input clk;
   wire clk;
   wire \clk$1 ;
@@ -50,10 +47,8 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   wire [7:0] pfm_in;
   reg pfm_out = 1'h0;
   reg \pfm_out$next ;
-  reg [7:0] pwm_counter = 8'h00;
-  reg [7:0] \pwm_counter$next ;
-  reg pwm_out = 1'h0;
-  reg \pwm_out$next ;
+  wire [7:0] pwm_data_in;
+  wire pwm_pwm_out;
   wire rst;
   input rst_n;
   wire rst_n;
@@ -76,25 +71,19 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   wire [7:0] uio_out;
   output [7:0] uo_out;
   wire [7:0] uo_out;
-  assign \$9  = pwm_counter <= ui_in_sel;
-  assign \$12  = pwm_counter + 1'h1;
-  assign \$15  = 8'hff - ui_in_sel;
-  assign \$19  = \$17  >= pfm_in;
-  assign \$23  = \$19  & \$21 ;
-  assign \$27  = \$25  >= pfm_in;
+  assign \$10  = 8'hff - ui_in_sel;
+  assign \$14  = \$12  >= pfm_in;
+  assign \$18  = \$14  & \$16 ;
+  assign \$22  = \$20  >= pfm_in;
+  assign \$26  = \$22  & \$24 ;
   assign \$2  = ~ rst_n;
-  assign \$31  = \$27  & \$29 ;
-  assign \$34  = pfm_counter + 1'h1;
-  assign \$37  = 8'hff - ui_in_sel;
-  assign \$43  = pfm2_counter >= \$41 ;
-  assign \$45  = pfm2_counter > pfm2_in;
-  assign \$48  = pfm2_counter + 1'h1;
+  assign \$29  = pfm_counter + 1'h1;
+  assign \$32  = 8'hff - ui_in_sel;
+  assign \$38  = pfm2_counter >= \$36 ;
+  assign \$40  = pfm2_counter > pfm2_in;
+  assign \$43  = pfm2_counter + 1'h1;
   always @(posedge \clk$1 )
     ui_in_sel <= \ui_in_sel$next ;
-  always @(posedge \clk$1 )
-    pwm_out <= \pwm_out$next ;
-  always @(posedge \clk$1 )
-    pwm_counter <= \pwm_counter$next ;
   always @(posedge \clk$1 )
     pfm_out <= \pfm_out$next ;
   always @(posedge \clk$1 )
@@ -115,6 +104,12 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
     .clk(\clk$1 ),
     .data_in(pdm_data_in),
     .pdm_out(pdm_pdm_out),
+    .rst(rst)
+  );
+  \tt_um_cmerrill_pdm.pwm  pwm (
+    .clk(\clk$1 ),
+    .data_in(pwm_data_in),
+    .pwm_out(pwm_pwm_out),
     .rst(rst)
   );
   \tt_um_cmerrill_pdm.spi  spi (
@@ -152,29 +147,7 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
     (* full_case = 32'd1 *)
-    casez (\$9 )
-      1'h1:
-          \pwm_out$next  = 1'h1;
-      default:
-          \pwm_out$next  = 1'h0;
-    endcase
-    casez (rst)
-      1'h1:
-          \pwm_out$next  = 1'h0;
-    endcase
-  end
-  always @* begin
-    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
-    \pwm_counter$next  = \$12 [7:0];
-    casez (rst)
-      1'h1:
-          \pwm_counter$next  = 8'h00;
-    endcase
-  end
-  always @* begin
-    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
-    (* full_case = 32'd1 *)
-    casez (\$23 )
+    casez (\$18 )
       1'h1:
           \pfm_out$next  = 1'h1;
       default:
@@ -188,11 +161,11 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
     (* full_case = 32'd1 *)
-    casez (\$31 )
+    casez (\$26 )
       1'h1:
           \pfm_counter$next  = 9'h000;
       default:
-          \pfm_counter$next  = \$34 [8:0];
+          \pfm_counter$next  = \$29 [8:0];
     endcase
     casez (rst)
       1'h1:
@@ -202,7 +175,7 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
     (* full_case = 32'd1 *)
-    casez (\$43 )
+    casez (\$38 )
       1'h1:
           \pfm2_out$next  = 1'h1;
       default:
@@ -216,11 +189,11 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
     (* full_case = 32'd1 *)
-    casez (\$45 )
+    casez (\$40 )
       1'h1:
           \pfm2_counter$next  = 9'h000;
       default:
-          \pfm2_counter$next  = \$48 [8:0];
+          \pfm2_counter$next  = \$43 [8:0];
     endcase
     casez (rst)
       1'h1:
@@ -228,13 +201,13 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
     endcase
   end
   assign \$4  = \$7 ;
-  assign \$11  = \$12 ;
-  assign \$14  = \$15 ;
-  assign \$33  = \$34 ;
-  assign \$36  = \$39 ;
-  assign \$47  = \$48 ;
-  assign pfm2_in = \$39 [8:0];
-  assign pfm_in = \$15 [7:0];
+  assign \$9  = \$10 ;
+  assign \$28  = \$29 ;
+  assign \$31  = \$34 ;
+  assign \$42  = \$43 ;
+  assign pfm2_in = \$34 [8:0];
+  assign pfm_in = \$10 [7:0];
+  assign pwm_data_in = ui_in_sel;
   assign pdm_data_in = \$7 [7:0];
   assign cs_edge_detect_inp = spi_cs_out;
   assign spi_sdi = uio_in[6];
@@ -243,19 +216,19 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   assign spi_rst = rst;
   assign uo_out[3] = pfm2_out;
   assign uo_out[2] = pfm_out;
-  assign uo_out[4] = pwm_out;
+  assign uo_out[4] = pwm_pwm_out;
   assign uo_out[0] = pdm_pdm_out;
   assign { uo_out[7:5], uo_out[1] } = 4'h0;
   assign uio_out = 8'h00;
   assign uio_oe = 8'h00;
   assign rst = \$2 ;
   assign \clk$1  = clk;
-  assign \$17  = { 1'h0, pfm_counter[8:1] };
-  assign \$21  = pfm_counter[0];
-  assign \$25  = { 1'h0, pfm_counter[8:1] };
-  assign \$29  = pfm_counter[0];
-  assign \$39  = { \$37 , 1'h0 };
-  assign \$41  = { 1'h0, \$39 [8:1] };
+  assign \$12  = { 1'h0, pfm_counter[8:1] };
+  assign \$16  = pfm_counter[0];
+  assign \$20  = { 1'h0, pfm_counter[8:1] };
+  assign \$24  = pfm_counter[0];
+  assign \$34  = { \$32 , 1'h0 };
+  assign \$36  = { 1'h0, \$34 [8:1] };
 endmodule
 
 (* generator = "Amaranth" *)
@@ -369,8 +342,74 @@ module \tt_um_cmerrill_pdm.pdm (rst, data_in, pdm_out, clk);
 endmodule
 
 (* generator = "Amaranth" *)
-module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, cs_out, dout, clk);
+module \tt_um_cmerrill_pdm.pwm (rst, data_in, pwm_out, clk);
   reg \$auto$verilog_backend.cc:2189:dump_module$4  = 0;
+  wire \$1 ;
+  wire \$3 ;
+  wire [8:0] \$5 ;
+  wire [8:0] \$6 ;
+  input clk;
+  wire clk;
+  reg [7:0] data_buffer = 8'h00;
+  reg [7:0] \data_buffer$next ;
+  input [7:0] data_in;
+  wire [7:0] data_in;
+  reg [7:0] pwm_counter = 8'h00;
+  reg [7:0] \pwm_counter$next ;
+  output pwm_out;
+  reg pwm_out = 1'h0;
+  reg \pwm_out$next ;
+  input rst;
+  wire rst;
+  always @(posedge clk)
+    pwm_counter <= \pwm_counter$next ;
+  assign \$1  = ! pwm_counter;
+  assign \$3  = pwm_counter <= data_buffer;
+  assign \$6  = pwm_counter + 1'h1;
+  always @(posedge clk)
+    data_buffer <= \data_buffer$next ;
+  always @(posedge clk)
+    pwm_out <= \pwm_out$next ;
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$4 ) begin end
+    \data_buffer$next  = data_buffer;
+    casez (\$1 )
+      1'h1:
+          \data_buffer$next  = data_in;
+    endcase
+    casez (rst)
+      1'h1:
+          \data_buffer$next  = 8'h00;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$4 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$3 )
+      1'h1:
+          \pwm_out$next  = 1'h1;
+      default:
+          \pwm_out$next  = 1'h0;
+    endcase
+    casez (rst)
+      1'h1:
+          \pwm_out$next  = 1'h0;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$4 ) begin end
+    \pwm_counter$next  = \$6 [7:0];
+    casez (rst)
+      1'h1:
+          \pwm_counter$next  = 8'h00;
+    endcase
+  end
+  assign \$5  = \$6 ;
+endmodule
+
+(* generator = "Amaranth" *)
+module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, cs_out, dout, clk);
+  reg \$auto$verilog_backend.cc:2189:dump_module$5  = 0;
   wire \$2 ;
   input clk;
   wire clk;
@@ -409,7 +448,7 @@ module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, cs_out, dout, clk
     .spi_data_live(spi_data_cdc_spi_data_live)
   );
   always @* begin
-    if (\$auto$verilog_backend.cc:2189:dump_module$4 ) begin end
+    if (\$auto$verilog_backend.cc:2189:dump_module$5 ) begin end
     \spi_data_cdc_spi_data_live$next  = spi_data_cdc_spi_data_live;
     casez (\$2 )
       1'h1:
@@ -429,7 +468,7 @@ endmodule
 
 (* generator = "Amaranth" *)
 module \tt_um_cmerrill_pdm.spi.spi_cs_cdc (rst, cs_l, cs_out, clk);
-  reg \$auto$verilog_backend.cc:2189:dump_module$5  = 0;
+  reg \$auto$verilog_backend.cc:2189:dump_module$6  = 0;
   input clk;
   wire clk;
   input cs_l;
@@ -447,7 +486,7 @@ module \tt_um_cmerrill_pdm.spi.spi_cs_cdc (rst, cs_l, cs_out, clk);
   always @(posedge clk)
     stage1 <= \stage1$next ;
   always @* begin
-    if (\$auto$verilog_backend.cc:2189:dump_module$5 ) begin end
+    if (\$auto$verilog_backend.cc:2189:dump_module$6 ) begin end
     \stage0$next  = cs_l;
     casez (rst)
       1'h1:
@@ -455,7 +494,7 @@ module \tt_um_cmerrill_pdm.spi.spi_cs_cdc (rst, cs_l, cs_out, clk);
     endcase
   end
   always @* begin
-    if (\$auto$verilog_backend.cc:2189:dump_module$5 ) begin end
+    if (\$auto$verilog_backend.cc:2189:dump_module$6 ) begin end
     \stage1$next  = stage0;
     casez (rst)
       1'h1:
@@ -467,7 +506,7 @@ endmodule
 
 (* generator = "Amaranth" *)
 module \tt_um_cmerrill_pdm.spi.spi_data_cdc (rst, dout, spi_data_live, clk);
-  reg \$auto$verilog_backend.cc:2189:dump_module$6  = 0;
+  reg \$auto$verilog_backend.cc:2189:dump_module$7  = 0;
   input clk;
   wire clk;
   output [7:0] dout;
@@ -485,7 +524,7 @@ module \tt_um_cmerrill_pdm.spi.spi_data_cdc (rst, dout, spi_data_live, clk);
   always @(posedge clk)
     stage1 <= \stage1$next ;
   always @* begin
-    if (\$auto$verilog_backend.cc:2189:dump_module$6 ) begin end
+    if (\$auto$verilog_backend.cc:2189:dump_module$7 ) begin end
     \stage0$next  = spi_data_live;
     casez (rst)
       1'h1:
@@ -493,7 +532,7 @@ module \tt_um_cmerrill_pdm.spi.spi_data_cdc (rst, dout, spi_data_live, clk);
     endcase
   end
   always @* begin
-    if (\$auto$verilog_backend.cc:2189:dump_module$6 ) begin end
+    if (\$auto$verilog_backend.cc:2189:dump_module$7 ) begin end
     \stage1$next  = stage0;
     casez (rst)
       1'h1:

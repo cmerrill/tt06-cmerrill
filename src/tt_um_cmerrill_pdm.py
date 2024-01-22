@@ -86,6 +86,9 @@ class PDMGenerator(Elaboratable):
         m = Module()
 
         # Feedback Loop
+        # FIXME: Is there something strange if we change PDM values while running?
+        #        I /think/ that the error accumulator should compensate, BUT maybe
+        #        there's an overflow case...
         error = Signal(signed(len(self.data_in) + 1))
         error_out = Signal(signed(len(self.data_in)))
         data_out = Signal(signed(len(self.data_in)), reset=self._min_val)
@@ -108,6 +111,43 @@ class PDMGenerator(Elaboratable):
         with m.Else():
             m.d.comb += data_out.eq(Const(self._min_val))
             m.d.sync += self.pdm_out.eq(Const(0))
+
+        return m
+
+
+class PWMGenerator(Elaboratable):
+    def __init__(self, bits=8, buffered_data=True):
+        # Configuration
+        self._bits = bits
+        self._buffer = buffered_data
+
+        # Input Signals
+        self.data_in = Signal(bits)
+
+        # Output Signals
+        self.pwm_out = Signal(1)
+    
+    def elaborate(self, platform):
+        m = Module()
+
+        # PWM loop counter
+        pwm_counter = Signal(unsigned(self._bits))
+        
+        # Optionally buffer the data so that it only changes when
+        # the counter is 0.
+        data_buffer = Signal(unsigned(self._bits))
+        if self._buffer:
+            with m.If(pwm_counter == Const(0)):
+                m.d.sync += data_buffer.eq(self.data_in)
+        else:
+            m.d.comb += data_buffer.eq(self.data_in)
+
+        # PWM It!
+        with m.If(pwm_counter <= data_buffer):
+            m.d.sync += self.pwm_out.eq(Const(1))
+        with m.Else():
+            m.d.sync += self.pwm_out.eq(Const(0))
+        m.d.sync += pwm_counter.eq(pwm_counter + 1)
 
         return m
 
@@ -178,17 +218,13 @@ class Top(Elaboratable):
             self.uo_out[0].eq(pdm.pdm_out),  # Output PDM waveform
         ]
 
-        ## PWM Implementation
-        # PWM It
-        # FIXME: Do we need to buffer the input based on full PWM loops?
-        pwm_counter = Signal(unsigned(8))
-        pwm_out = Signal(1)
-        with m.If(pwm_counter <= ui_in_sel):
-            m.d.sync += pwm_out.eq(Const(1))
-        with m.Else():
-            m.d.sync += pwm_out.eq(Const(0))
-        m.d.sync += pwm_counter.eq(pwm_counter + 1)
-        m.d.comb += self.uo_out[4].eq(pwm_out)
+        # PWM Implementation
+        # Connect the Signals
+        m.submodules.pwm = pwm = PWMGenerator(bits=8, buffered_data=True)
+        m.d.comb += [
+            pwm.data_in.eq(ui_in_sel),
+            self.uo_out[4].eq(pwm.pwm_out),
+        ]
 
         ## PFM Implementations
         # PFM(?) It
