@@ -433,6 +433,7 @@ endmodule
 
 (* generator = "Amaranth" *)
 module \tt_um_cmerrill_pdm.spi.spi_cs_cdc (rst, cs_l, clk);
+  reg \$auto$verilog_backend.cc:2189:dump_module$5  = 0;
   input clk;
   wire clk;
   input cs_l;
@@ -441,20 +442,35 @@ module \tt_um_cmerrill_pdm.spi.spi_cs_cdc (rst, cs_l, clk);
   input rst;
   wire rst;
   reg stage0 = 1'h0;
-  wire \stage0$next ;
+  reg \stage0$next ;
   reg stage1 = 1'h0;
-  wire \stage1$next ;
+  reg \stage1$next ;
   always @(posedge clk)
     stage0 <= \stage0$next ;
   always @(posedge clk)
     stage1 <= \stage1$next ;
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$5 ) begin end
+    \stage0$next  = cs_l;
+    casez (rst)
+      1'h1:
+          \stage0$next  = 1'h0;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$5 ) begin end
+    \stage1$next  = stage0;
+    casez (rst)
+      1'h1:
+          \stage1$next  = 1'h0;
+    endcase
+  end
   assign cs_out = stage1;
-  assign \stage1$next  = stage0;
-  assign \stage0$next  = cs_l;
 endmodule
 
 (* generator = "Amaranth" *)
 module \tt_um_cmerrill_pdm.spi.spi_data_cdc (rst, dout, spi_data_live, clk);
+  reg \$auto$verilog_backend.cc:2189:dump_module$6  = 0;
   input clk;
   wire clk;
   output [7:0] dout;
@@ -464,14 +480,28 @@ module \tt_um_cmerrill_pdm.spi.spi_data_cdc (rst, dout, spi_data_live, clk);
   input [7:0] spi_data_live;
   wire [7:0] spi_data_live;
   reg [7:0] stage0 = 8'h00;
-  wire [7:0] \stage0$next ;
+  reg [7:0] \stage0$next ;
   reg [7:0] stage1 = 8'h00;
-  wire [7:0] \stage1$next ;
+  reg [7:0] \stage1$next ;
   always @(posedge clk)
     stage0 <= \stage0$next ;
   always @(posedge clk)
     stage1 <= \stage1$next ;
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$6 ) begin end
+    \stage0$next  = spi_data_live;
+    casez (rst)
+      1'h1:
+          \stage0$next  = 8'h00;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$6 ) begin end
+    \stage1$next  = stage0;
+    casez (rst)
+      1'h1:
+          \stage1$next  = 8'h00;
+    endcase
+  end
   assign dout = stage1;
-  assign \stage1$next  = stage0;
-  assign \stage0$next  = spi_data_live;
 endmodule

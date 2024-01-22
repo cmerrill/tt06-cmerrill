@@ -65,8 +65,8 @@ class SPIShiftReg(Elaboratable):
             m.d.spi += spi_data_live[0].eq(self.sdi)
         
         # Shift to CS clock domain
-        m.submodules.spi_data_cdc = FFSynchronizer(spi_data_live, self.dout)
-        m.submodules.spi_cs_cdc = FFSynchronizer(self.cs_l, self.cs_out)
+        m.submodules.spi_data_cdc = FFSynchronizer(spi_data_live, self.dout, reset_less=False)
+        m.submodules.spi_cs_cdc = FFSynchronizer(self.cs_l, self.cs_out, reset_less=False)
 
         return m
         
