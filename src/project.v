@@ -4,18 +4,27 @@
 (* generator = "Amaranth" *)
 module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_in);
   reg \$auto$verilog_backend.cc:2189:dump_module$1  = 0;
+  wire [9:0] \$11 ;
+  wire [8:0] \$12 ;
+  wire [9:0] \$14 ;
   wire \$2 ;
-  wire [9:0] \$4 ;
-  wire [8:0] \$5 ;
-  wire [9:0] \$7 ;
+  wire \$4 ;
+  wire [4:0] \$6 ;
+  wire [4:0] \$7 ;
+  wire \$9 ;
   input clk;
   wire clk;
   wire \clk$1 ;
+  wire [3:0] clock_div;
+  reg [3:0] clock_div_counter = 4'h0;
+  reg [3:0] \clock_div_counter$next ;
   wire cs_edge_detect_inp;
   wire cs_edge_detect_out;
   input ena;
   wire ena;
   wire [7:0] pdm_data_in;
+  reg pdm_divided_clock_pulse = 1'h0;
+  reg \pdm_divided_clock_pulse$next ;
   wire pdm_pdm_out;
   wire [7:0] pfm1_data_in;
   wire pfm1_pfm_out;
@@ -45,11 +54,18 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   wire [7:0] uio_out;
   output [7:0] uo_out;
   wire [7:0] uo_out;
-  assign \$2  = ~ rst_n;
-  assign \$5  = + ui_in_sel;
-  assign \$7  = $signed(\$5 ) - $signed(9'h180);
+  assign \$9  = clock_div_counter >= clock_div;
+  assign \$12  = + ui_in_sel;
+  assign \$14  = $signed(\$12 ) - $signed(9'h180);
   always @(posedge \clk$1 )
     ui_in_sel <= \ui_in_sel$next ;
+  always @(posedge \clk$1 )
+    clock_div_counter <= \clock_div_counter$next ;
+  always @(posedge \clk$1 )
+    pdm_divided_clock_pulse <= \pdm_divided_clock_pulse$next ;
+  assign \$2  = ~ rst_n;
+  assign \$4  = clock_div_counter >= clock_div;
+  assign \$7  = clock_div_counter + 1'h1;
   \tt_um_cmerrill_pdm.cs_edge_detect  cs_edge_detect (
     .clk(\clk$1 ),
     .inp(cs_edge_detect_inp),
@@ -59,24 +75,28 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   \tt_um_cmerrill_pdm.pdm  pdm (
     .clk(\clk$1 ),
     .data_in(pdm_data_in),
+    .divided_clock_pulse(pdm_divided_clock_pulse),
     .pdm_out(pdm_pdm_out),
     .rst(rst)
   );
   \tt_um_cmerrill_pdm.pfm1  pfm1 (
     .clk(\clk$1 ),
     .data_in(pfm1_data_in),
+    .divided_clock_pulse(pdm_divided_clock_pulse),
     .pfm_out(pfm1_pfm_out),
     .rst(rst)
   );
   \tt_um_cmerrill_pdm.pfm2  pfm2 (
     .clk(\clk$1 ),
     .data_in(pfm2_data_in),
+    .divided_clock_pulse(pdm_divided_clock_pulse),
     .pfm_out(pfm2_pfm_out),
     .rst(rst)
   );
   \tt_um_cmerrill_pdm.pwm  pwm (
     .clk(\clk$1 ),
     .data_in(pwm_data_in),
+    .divided_clock_pulse(pdm_divided_clock_pulse),
     .pwm_out(pwm_pwm_out),
     .rst(rst)
   );
@@ -112,11 +132,41 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
           \ui_in_sel$next  = 8'h00;
     endcase
   end
-  assign \$4  = \$7 ;
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$4 )
+      1'h1:
+          \clock_div_counter$next  = 4'h0;
+      default:
+          \clock_div_counter$next  = \$7 [3:0];
+    endcase
+    casez (rst)
+      1'h1:
+          \clock_div_counter$next  = 4'h0;
+    endcase
+  end
+  always @* begin
+    if (\$auto$verilog_backend.cc:2189:dump_module$1 ) begin end
+    (* full_case = 32'd1 *)
+    casez (\$9 )
+      1'h1:
+          \pdm_divided_clock_pulse$next  = 1'h1;
+      default:
+          \pdm_divided_clock_pulse$next  = 1'h0;
+    endcase
+    casez (rst)
+      1'h1:
+          \pdm_divided_clock_pulse$next  = 1'h0;
+    endcase
+  end
+  assign \$6  = \$7 ;
+  assign \$11  = \$14 ;
   assign pfm2_data_in = ui_in_sel;
   assign pfm1_data_in = ui_in_sel;
   assign pwm_data_in = ui_in_sel;
-  assign pdm_data_in = \$7 [7:0];
+  assign pdm_data_in = \$14 [7:0];
+  assign clock_div = uio_in[3:0];
   assign cs_edge_detect_inp = spi_cs_out;
   assign spi_sdi = uio_in[6];
   assign spi_sclk = uio_in[5];
@@ -164,7 +214,7 @@ module \tt_um_cmerrill_pdm.cs_edge_detect (rst, inp, out, clk);
 endmodule
 
 (* generator = "Amaranth" *)
-module \tt_um_cmerrill_pdm.pdm (rst, data_in, pdm_out, clk);
+module \tt_um_cmerrill_pdm.pdm (rst, divided_clock_pulse, data_in, pdm_out, clk);
   reg \$auto$verilog_backend.cc:2189:dump_module$3  = 0;
   wire [9:0] \$1 ;
   wire \$10 ;
@@ -178,6 +228,8 @@ module \tt_um_cmerrill_pdm.pdm (rst, data_in, pdm_out, clk);
   input [7:0] data_in;
   wire [7:0] data_in;
   reg [7:0] data_out;
+  input divided_clock_pulse;
+  wire divided_clock_pulse;
   reg [8:0] error = 9'h000;
   reg [8:0] \error$next ;
   reg [7:0] error_out;
@@ -199,6 +251,10 @@ module \tt_um_cmerrill_pdm.pdm (rst, data_in, pdm_out, clk);
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$3 ) begin end
     \error$next  = \$4 [8:0];
+    casez (divided_clock_pulse)
+      1'h0:
+          \error$next  = error;
+    endcase
     casez (rst)
       1'h1:
           \error$next  = 9'h000;
@@ -235,6 +291,10 @@ module \tt_um_cmerrill_pdm.pdm (rst, data_in, pdm_out, clk);
       default:
           \pdm_out$next  = 1'h0;
     endcase
+    casez (divided_clock_pulse)
+      1'h0:
+          \pdm_out$next  = pdm_out;
+    endcase
     casez (rst)
       1'h1:
           \pdm_out$next  = 1'h0;
@@ -244,7 +304,7 @@ module \tt_um_cmerrill_pdm.pdm (rst, data_in, pdm_out, clk);
 endmodule
 
 (* generator = "Amaranth" *)
-module \tt_um_cmerrill_pdm.pfm1 (rst, data_in, pfm_out, clk);
+module \tt_um_cmerrill_pdm.pfm1 (rst, divided_clock_pulse, data_in, pfm_out, clk);
   reg \$auto$verilog_backend.cc:2189:dump_module$4  = 0;
   wire [8:0] \$1 ;
   wire \$10 ;
@@ -262,6 +322,8 @@ module \tt_um_cmerrill_pdm.pfm1 (rst, data_in, pfm_out, clk);
   wire clk;
   input [7:0] data_in;
   wire [7:0] data_in;
+  input divided_clock_pulse;
+  wire divided_clock_pulse;
   reg [8:0] pfm_counter = 9'h000;
   reg [8:0] \pfm_counter$next ;
   wire [7:0] pfm_in;
@@ -289,6 +351,10 @@ module \tt_um_cmerrill_pdm.pfm1 (rst, data_in, pfm_out, clk);
       default:
           \pfm_out$next  = 1'h0;
     endcase
+    casez (divided_clock_pulse)
+      1'h0:
+          \pfm_out$next  = pfm_out;
+    endcase
     casez (rst)
       1'h1:
           \pfm_out$next  = 1'h0;
@@ -302,6 +368,10 @@ module \tt_um_cmerrill_pdm.pfm1 (rst, data_in, pfm_out, clk);
           \pfm_counter$next  = 9'h000;
       default:
           \pfm_counter$next  = \$21 [8:0];
+    endcase
+    casez (divided_clock_pulse)
+      1'h0:
+          \pfm_counter$next  = pfm_counter;
     endcase
     casez (rst)
       1'h1:
@@ -318,7 +388,7 @@ module \tt_um_cmerrill_pdm.pfm1 (rst, data_in, pfm_out, clk);
 endmodule
 
 (* generator = "Amaranth" *)
-module \tt_um_cmerrill_pdm.pfm2 (rst, data_in, pfm_out, clk);
+module \tt_um_cmerrill_pdm.pfm2 (rst, divided_clock_pulse, data_in, pfm_out, clk);
   reg \$auto$verilog_backend.cc:2189:dump_module$5  = 0;
   wire [9:0] \$1 ;
   wire \$10 ;
@@ -332,6 +402,8 @@ module \tt_um_cmerrill_pdm.pfm2 (rst, data_in, pfm_out, clk);
   wire clk;
   input [7:0] data_in;
   wire [7:0] data_in;
+  input divided_clock_pulse;
+  wire divided_clock_pulse;
   reg [8:0] pfm2_counter = 9'h000;
   reg [8:0] \pfm2_counter$next ;
   wire [8:0] pfm2_in;
@@ -357,6 +429,10 @@ module \tt_um_cmerrill_pdm.pfm2 (rst, data_in, pfm_out, clk);
       default:
           \pfm_out$next  = 1'h0;
     endcase
+    casez (divided_clock_pulse)
+      1'h0:
+          \pfm_out$next  = pfm_out;
+    endcase
     casez (rst)
       1'h1:
           \pfm_out$next  = 1'h0;
@@ -371,6 +447,10 @@ module \tt_um_cmerrill_pdm.pfm2 (rst, data_in, pfm_out, clk);
       default:
           \pfm2_counter$next  = \$13 [8:0];
     endcase
+    casez (divided_clock_pulse)
+      1'h0:
+          \pfm2_counter$next  = pfm2_counter;
+    endcase
     casez (rst)
       1'h1:
           \pfm2_counter$next  = 9'h000;
@@ -384,7 +464,7 @@ module \tt_um_cmerrill_pdm.pfm2 (rst, data_in, pfm_out, clk);
 endmodule
 
 (* generator = "Amaranth" *)
-module \tt_um_cmerrill_pdm.pwm (rst, data_in, pwm_out, clk);
+module \tt_um_cmerrill_pdm.pwm (rst, divided_clock_pulse, data_in, pwm_out, clk);
   reg \$auto$verilog_backend.cc:2189:dump_module$6  = 0;
   wire \$1 ;
   wire \$3 ;
@@ -396,6 +476,8 @@ module \tt_um_cmerrill_pdm.pwm (rst, data_in, pwm_out, clk);
   reg [7:0] \data_buffer$next ;
   input [7:0] data_in;
   wire [7:0] data_in;
+  input divided_clock_pulse;
+  wire divided_clock_pulse;
   reg [7:0] pwm_counter = 8'h00;
   reg [7:0] \pwm_counter$next ;
   output pwm_out;
@@ -419,6 +501,10 @@ module \tt_um_cmerrill_pdm.pwm (rst, data_in, pwm_out, clk);
       1'h1:
           \data_buffer$next  = data_in;
     endcase
+    casez (divided_clock_pulse)
+      1'h0:
+          \data_buffer$next  = data_buffer;
+    endcase
     casez (rst)
       1'h1:
           \data_buffer$next  = 8'h00;
@@ -433,6 +519,10 @@ module \tt_um_cmerrill_pdm.pwm (rst, data_in, pwm_out, clk);
       default:
           \pwm_out$next  = 1'h0;
     endcase
+    casez (divided_clock_pulse)
+      1'h0:
+          \pwm_out$next  = pwm_out;
+    endcase
     casez (rst)
       1'h1:
           \pwm_out$next  = 1'h0;
@@ -441,6 +531,10 @@ module \tt_um_cmerrill_pdm.pwm (rst, data_in, pwm_out, clk);
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$6 ) begin end
     \pwm_counter$next  = \$6 [7:0];
+    casez (divided_clock_pulse)
+      1'h0:
+          \pwm_counter$next  = pwm_counter;
+    endcase
     casez (rst)
       1'h1:
           \pwm_counter$next  = 8'h00;

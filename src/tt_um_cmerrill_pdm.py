@@ -277,32 +277,52 @@ class Top(Elaboratable):
                 ]
             with m.Case(Const(1)):
                 m.d.comb += ui_in_sel_mux.eq(self.spi_bus_in.dout),
+        
         # Latch Data on low to high edge on CS_L/Latch
         with m.If(cs_edge_detect.out):
             m.d.sync += ui_in_sel.eq(ui_in_sel_mux)
 
+        # Clock Divider (o something that functions that way)
+        clock_div = Signal(4)
+        clock_div_counter = Signal(4)
+        divided_clock_pulse = Signal(1)
+
+        m.d.comb += clock_div.eq(self.uio_in[0:4])
+        with m.If(clock_div_counter >= clock_div):
+            m.d.sync += [
+                clock_div_counter.eq(Const(0)),
+                divided_clock_pulse.eq(Const(1)),
+            ]
+        with m.Else():
+            m.d.sync += [
+                clock_div_counter.eq(clock_div_counter + 1),
+                divided_clock_pulse.eq(Const(0)),
+            ]
+
+        clock_div_inserter = EnableInserter(divided_clock_pulse)
+
         # PDM Implementation
-        m.submodules.pdm = pdm = PDMGenerator(bits=8)
+        m.submodules.pdm = pdm = clock_div_inserter(PDMGenerator(bits=8))
         m.d.comb += [
             pdm.data_in.eq(ui_in_sel - Const(-128)), # Center the data
             self.uo_out[0].eq(pdm.pdm_out),  # Output PDM waveform
         ]
 
         # PWM Implementation
-        m.submodules.pwm = pwm = PWMGenerator(bits=8, buffered_data=True)
+        m.submodules.pwm = pwm = clock_div_inserter(PWMGenerator(bits=8, buffered_data=True))
         m.d.comb += [
             pwm.data_in.eq(ui_in_sel),
             self.uo_out[4].eq(pwm.pwm_out),
         ]
 
         ## PFM Implementations
-        m.submodules.pfm1 = pfm1 = PFMGeneratorFixedPulseWidth(bits=8)
+        m.submodules.pfm1 = pfm1 = clock_div_inserter(PFMGeneratorFixedPulseWidth(bits=8))
         m.d.comb += [
             pfm1.data_in.eq(ui_in_sel),
             self.uo_out[2].eq(pfm1.pfm_out),
         ]
 
-        m.submodules.pfm2 = pfm2 = PFMGenerator50pctDuty(bits=8)
+        m.submodules.pfm2 = pfm2 = clock_div_inserter(PFMGenerator50pctDuty(bits=8))
         m.d.comb += [
             pfm2.data_in.eq(ui_in_sel),
             self.uo_out[3].eq(pfm2.pfm_out),
