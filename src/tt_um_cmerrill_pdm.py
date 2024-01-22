@@ -151,6 +151,76 @@ class PWMGenerator(Elaboratable):
 
         return m
 
+
+class PFMGeneratorFixedPulseWidth(Elaboratable):
+    def __init__(self, bits=8):
+        # Configuration
+        self._bits = bits
+        self._max_val = 2**bits - 1
+
+        # Input Signals
+        self.data_in = Signal(bits)
+
+        # Output Signals
+        self.pfm_out = Signal(1)
+
+    def elaborate(self,platform):
+        m = Module()
+
+        # PFM(?) It
+        # FIXME: Do we need to buffer the input based on full loops?
+        #        If not there may be a mid-frequency pulse when transitioning to a lower value
+        pfm_counter = Signal(unsigned(self._bits + 1))
+        pfm_in = Signal(unsigned(self._bits))
+        m.d.comb += pfm_in.eq(Const(self._max_val) - self.data_in)
+        with m.If(((pfm_counter >> 1) >= pfm_in)
+                    & (pfm_counter[0] == Const(1))): # Divide clock by two so that we always have a square wave
+            m.d.sync += self.pfm_out.eq(Const(1))
+            m.d.sync += pfm_counter.eq(Const(0))
+        with m.Else():
+            m.d.sync += self.pfm_out.eq(Const(0))
+            m.d.sync += pfm_counter.eq(pfm_counter + 1)
+
+        return m
+
+class PFMGenerator50pctDuty(Elaboratable):
+    def __init__(self, bits):
+        # Configuration
+        self._bits = bits
+        self._max_val = 2**bits - 1
+
+        # Input Signals
+        self.data_in = Signal(bits)
+
+        # Output Signals
+        self.pfm_out = Signal(1)
+
+    def elaborate(self,platform):
+        m = Module()
+        
+        # PFM(?) It, V2
+        # FIXME: Do we need to buffer the input based on full loops?
+        #        Does that even make sense with PFM like this?
+        pfm2_counter = Signal(unsigned(self._bits + 1))
+        pfm2_in = Signal(unsigned(self._bits + 1))
+        # Shift the data such that lower inputs lead to higher frequenceis
+        # (under the assumption that it will be low-pass filtered)
+        m.d.comb += pfm2_in.eq((Const(self._max_val) - self.data_in) << 1)
+        # Generate a square wave with ~50% duty cycle
+        with m.If(pfm2_counter >= (pfm2_in >> 1)):
+            m.d.sync += self.pfm_out.eq(Const(1))
+        with m.Else():
+            m.d.sync += self.pfm_out.eq(Const(0))
+
+        # Counter
+        with m.If(pfm2_counter > pfm2_in):
+            m.d.sync += pfm2_counter.eq(Const(0))
+        with m.Else():
+            m.d.sync += pfm2_counter.eq(pfm2_counter + 1)
+            
+        # Boilerplate: Return module
+        return m
+
 class Top(Elaboratable):
     def __init__(self):
         self.ui_in = Signal(8)    # Dedicated Inputs
@@ -175,7 +245,7 @@ class Top(Elaboratable):
 
         # Boilerplate: Zero unused outputs
         m.d.comb += [
-            self.uio_oe.eq(Repl(OE.INPUT,8)), # IO pins set as input (not output)
+            self.uio_oe.eq(Value.cast(OE.INPUT).replicate(8)), # IO pins set as input (not output)
             self.uio_out.eq(Const(0)),
             self.uo_out.eq(Const(0)),
         ]
@@ -192,6 +262,7 @@ class Top(Elaboratable):
         # CS Rising Edge Detector
         m.submodules.cs_edge_detect = cs_edge_detect = EdgeDetect("pos")
         m.d.comb += [
+            # Use the cs_out from SPI because I am scared of crossing domains again
             cs_edge_detect.inp.eq(self.spi_bus_in.cs_out),
         ]
 
@@ -210,8 +281,7 @@ class Top(Elaboratable):
         with m.If(cs_edge_detect.out):
             m.d.sync += ui_in_sel.eq(ui_in_sel_mux)
 
-        ## PDM Implementation
-        # Connect the signals
+        # PDM Implementation
         m.submodules.pdm = pdm = PDMGenerator(bits=8)
         m.d.comb += [
             pdm.data_in.eq(ui_in_sel - Const(-128)), # Center the data
@@ -219,7 +289,6 @@ class Top(Elaboratable):
         ]
 
         # PWM Implementation
-        # Connect the Signals
         m.submodules.pwm = pwm = PWMGenerator(bits=8, buffered_data=True)
         m.d.comb += [
             pwm.data_in.eq(ui_in_sel),
@@ -227,39 +296,17 @@ class Top(Elaboratable):
         ]
 
         ## PFM Implementations
-        # PFM(?) It
-        # FIXME: Do we need to buffer the input based on full loops?
-        pfm_counter = Signal(unsigned(9))
-        pfm_out = Signal(1)
-        pfm_in = Signal(unsigned(8))
-        m.d.comb += pfm_in.eq(Const(255) - ui_in_sel)
-        with m.If(((pfm_counter >> 1) >= pfm_in)
-                    & (pfm_counter[0] == Const(1))): # Divide clock by two so that we always have a square wave
-            m.d.sync += pfm_out.eq(Const(1))
-            m.d.sync += pfm_counter.eq(Const(0))
-        with m.Else():
-            m.d.sync += pfm_out.eq(Const(0))
-            m.d.sync += pfm_counter.eq(pfm_counter + 1)
-        m.d.comb += self.uo_out[2].eq(pfm_out)
+        m.submodules.pfm1 = pfm1 = PFMGeneratorFixedPulseWidth(bits=8)
+        m.d.comb += [
+            pfm1.data_in.eq(ui_in_sel),
+            self.uo_out[2].eq(pfm1.pfm_out),
+        ]
 
-        # PFM(?) It, V2
-        # FIXME: Do we need to buffer the input based on full loops?
-        #        Does that even make sense with PFM like this?
-        pfm2_counter = Signal(unsigned(9))
-        pfm2_out = Signal(1)
-        pfm2_in = Signal(unsigned(9))
-        m.d.comb += pfm2_in.eq((Const(255) - ui_in_sel) << 1)
-        with m.If(pfm2_counter >= (pfm2_in >> 1)):
-            m.d.sync += pfm2_out.eq(Const(1))
-        with m.Else():
-            m.d.sync += pfm2_out.eq(Const(0))
-        # Counter
-        with m.If(pfm2_counter > pfm2_in):
-            m.d.sync += pfm2_counter.eq(Const(0))
-        with m.Else():
-            m.d.sync += pfm2_counter.eq(pfm2_counter + 1)
-        # Output
-        m.d.comb += self.uo_out[3].eq(pfm2_out)
+        m.submodules.pfm2 = pfm2 = PFMGenerator50pctDuty(bits=8)
+        m.d.comb += [
+            pfm2.data_in.eq(ui_in_sel),
+            self.uo_out[3].eq(pfm2.pfm_out),
+        ]
             
         # Boilerplate: Return module
         return m
