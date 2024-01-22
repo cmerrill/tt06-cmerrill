@@ -36,7 +36,6 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   wire \clk$1 ;
   wire cs_edge_detect_inp;
   wire cs_edge_detect_out;
-  wire cs_signal;
   input ena;
   wire ena;
   wire [7:0] pdm_data_in;
@@ -59,6 +58,7 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   input rst_n;
   wire rst_n;
   wire spi_cs_l;
+  wire spi_cs_out;
   wire [7:0] spi_dout;
   wire spi_rst;
   wire spi_sclk;
@@ -120,6 +120,7 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   \tt_um_cmerrill_pdm.spi  spi (
     .clk(\clk$1 ),
     .cs_l(spi_cs_l),
+    .cs_out(spi_cs_out),
     .dout(spi_dout),
     .rst(rst),
     .\rst$1 (spi_rst),
@@ -235,12 +236,11 @@ module tt_um_cmerrill_pdm(uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n, ui_i
   assign pfm2_in = \$39 [8:0];
   assign pfm_in = \$15 [7:0];
   assign pdm_data_in = \$7 [7:0];
-  assign cs_edge_detect_inp = cs_signal;
+  assign cs_edge_detect_inp = spi_cs_out;
   assign spi_sdi = uio_in[6];
   assign spi_sclk = uio_in[5];
-  assign spi_cs_l = cs_signal;
+  assign spi_cs_l = uio_in[4];
   assign spi_rst = rst;
-  assign cs_signal = uio_in[4];
   assign uo_out[3] = pfm2_out;
   assign uo_out[2] = pfm_out;
   assign uo_out[4] = pwm_out;
@@ -369,7 +369,7 @@ module \tt_um_cmerrill_pdm.pdm (rst, data_in, pdm_out, clk);
 endmodule
 
 (* generator = "Amaranth" *)
-module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, dout, clk);
+module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, cs_out, dout, clk);
   reg \$auto$verilog_backend.cc:2189:dump_module$4  = 0;
   wire \$2 ;
   wire \$4 ;
@@ -377,6 +377,8 @@ module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, dout, clk);
   wire clk;
   input cs_l;
   wire cs_l;
+  output cs_out;
+  wire cs_out;
   output [7:0] dout;
   wire [7:0] dout;
   input rst;
@@ -398,6 +400,7 @@ module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, dout, clk);
   \tt_um_cmerrill_pdm.spi.spi_cs_cdc  spi_cs_cdc (
     .clk(clk),
     .cs_l(cs_l),
+    .cs_out(cs_out),
     .rst(rst)
   );
   \tt_um_cmerrill_pdm.spi.spi_data_cdc  spi_data_cdc (
@@ -432,12 +435,13 @@ module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, dout, clk);
 endmodule
 
 (* generator = "Amaranth" *)
-module \tt_um_cmerrill_pdm.spi.spi_cs_cdc (rst, cs_l, clk);
+module \tt_um_cmerrill_pdm.spi.spi_cs_cdc (rst, cs_l, cs_out, clk);
   reg \$auto$verilog_backend.cc:2189:dump_module$5  = 0;
   input clk;
   wire clk;
   input cs_l;
   wire cs_l;
+  output cs_out;
   wire cs_out;
   input rst;
   wire rst;

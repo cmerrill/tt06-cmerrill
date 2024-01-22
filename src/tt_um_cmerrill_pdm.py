@@ -141,12 +141,10 @@ class Top(Elaboratable):
         ]
 
         # Serial data input shift register
-        cs_signal = Signal(1)
-        m.d.comb += cs_signal.eq(self.uio_in[4])
         m.submodules.spi = self.spi_bus_in = SPIShiftReg(width=8)
         m.d.comb += [
             self.spi_bus_in.rst.eq(ResetSignal("sync")),
-            self.spi_bus_in.cs_l.eq(cs_signal),
+            self.spi_bus_in.cs_l.eq(self.uio_in[4]),
             self.spi_bus_in.sclk.eq(self.uio_in[5]),
             self.spi_bus_in.sdi.eq(self.uio_in[6]),
         ]
@@ -154,7 +152,7 @@ class Top(Elaboratable):
         # CS Rising Edge Detector
         m.submodules.cs_edge_detect = cs_edge_detect = EdgeDetect("pos")
         m.d.comb += [
-            cs_edge_detect.inp.eq(cs_signal),
+            cs_edge_detect.inp.eq(self.spi_bus_in.cs_out),
         ]
 
         # Select how we get the input data (parallel, SPI)
