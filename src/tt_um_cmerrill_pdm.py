@@ -37,6 +37,7 @@ class SPIShiftReg(Elaboratable):
         # Configuration
         self._edge = edge
         self._clk_inv = clk_inv
+        self._width = width
         # SPI Input Signals
         self.sdi = Signal(1)
         self.sclk = Signal(1)
@@ -52,16 +53,15 @@ class SPIShiftReg(Elaboratable):
         # Boilerplate: Set up sclk clock domain
         m.domains.spi = sclk_domain = ClockDomain("spi", local=True, clk_edge=self._edge, async_reset=True)
         if self._clk_inv:
-            m.d.comb += sclk_domain.clk.eq(self.sclk)
-        else:
             m.d.comb += sclk_domain.clk.eq(~self.sclk)
+        else:
+            m.d.comb += sclk_domain.clk.eq(self.sclk)
         m.d.comb += sclk_domain.rst.eq(self.rst)
 
         # Assumes MSB first
         spi_data_live = Signal(len(self.dout))
         with m.If(self.cs_l == Const(0)):
-            for i in reversed(range(len(spi_data_live) - 1)):
-                m.d.spi += spi_data_live[i+1].eq(spi_data_live[i])
+            m.d.spi += spi_data_live[1:].eq(spi_data_live[:-1])
             m.d.spi += spi_data_live[0].eq(self.sdi)
         
         # Shift to CS clock domain

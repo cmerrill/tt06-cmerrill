@@ -372,7 +372,6 @@ endmodule
 module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, cs_out, dout, clk);
   reg \$auto$verilog_backend.cc:2189:dump_module$4  = 0;
   wire \$2 ;
-  wire \$4 ;
   input clk;
   wire clk;
   input cs_l;
@@ -393,10 +392,10 @@ module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, cs_out, dout, clk
   reg [7:0] spi_data_cdc_spi_data_live = 8'h00;
   reg [7:0] \spi_data_cdc_spi_data_live$next ;
   wire spi_rst;
-  assign \$2  = ~ sclk;
-  assign \$4  = ~ cs_l;
-  always @(negedge sclk)
-    spi_data_cdc_spi_data_live <= \spi_data_cdc_spi_data_live$next ;
+  assign \$2  = ~ cs_l;
+  always @(posedge spi_clk, posedge spi_rst)
+    if (spi_rst) spi_data_cdc_spi_data_live <= 8'h00;
+    else spi_data_cdc_spi_data_live <= \spi_data_cdc_spi_data_live$next ;
   \tt_um_cmerrill_pdm.spi.spi_cs_cdc  spi_cs_cdc (
     .clk(clk),
     .cs_l(cs_l),
@@ -412,16 +411,10 @@ module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, cs_out, dout, clk
   always @* begin
     if (\$auto$verilog_backend.cc:2189:dump_module$4 ) begin end
     \spi_data_cdc_spi_data_live$next  = spi_data_cdc_spi_data_live;
-    casez (\$4 )
+    casez (\$2 )
       1'h1:
         begin
-          \spi_data_cdc_spi_data_live$next [7] = spi_data_cdc_spi_data_live[6];
-          \spi_data_cdc_spi_data_live$next [6] = spi_data_cdc_spi_data_live[5];
-          \spi_data_cdc_spi_data_live$next [5] = spi_data_cdc_spi_data_live[4];
-          \spi_data_cdc_spi_data_live$next [4] = spi_data_cdc_spi_data_live[3];
-          \spi_data_cdc_spi_data_live$next [3] = spi_data_cdc_spi_data_live[2];
-          \spi_data_cdc_spi_data_live$next [2] = spi_data_cdc_spi_data_live[1];
-          \spi_data_cdc_spi_data_live$next [1] = spi_data_cdc_spi_data_live[0];
+          \spi_data_cdc_spi_data_live$next [7:1] = spi_data_cdc_spi_data_live[6:0];
           \spi_data_cdc_spi_data_live$next [0] = sdi;
         end
     endcase
@@ -431,7 +424,7 @@ module \tt_um_cmerrill_pdm.spi (rst, \rst$1 , cs_l, sclk, sdi, cs_out, dout, clk
     endcase
   end
   assign spi_rst = \rst$1 ;
-  assign spi_clk = \$2 ;
+  assign spi_clk = sclk;
 endmodule
 
 (* generator = "Amaranth" *)
