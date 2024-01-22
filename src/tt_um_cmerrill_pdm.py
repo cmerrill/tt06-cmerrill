@@ -51,7 +51,7 @@ class SPIShiftReg(Elaboratable):
         self.sclk = Signal(1)
         self.cs_l = Signal(1)
         # Standard clock domain signals
-        self.res = Signal(1)
+        self.rst = Signal(1)
         self.clk = Signal(1)
         # Output signals
         self.dout = Signal(width)
@@ -64,7 +64,7 @@ class SPIShiftReg(Elaboratable):
         m.domains.sync = sync_domain = ClockDomain(local=True)
         m.d.comb += [
             sync_domain.clk.eq(self.clk),
-            sync_domain.res.eq(self.res),
+            sync_domain.rst.eq(self.rst),
         ]
 
         # Boilerplate: Set up sclk clock domain
@@ -73,7 +73,7 @@ class SPIShiftReg(Elaboratable):
             m.d.comb += sclk_domain.clk.eq(self.sclk)
         else:
             m.d.comb += sclk_domain.clk.eq(~self.sclk)
-        m.d.comb += sclk_domain.rst.eq(self.res)
+        m.d.comb += sclk_domain.rst.eq(self.rst)
 
         # Assumes MSB first
         spi_data_live = Signal(len(self.dout))
@@ -88,6 +88,55 @@ class SPIShiftReg(Elaboratable):
 
         return m
         
+
+class PDMGenerator(Elaboratable):
+    def __init__(self, bits=8):
+        # Internal constants
+        self._max_val = 2**(bits - 1) - 1
+        self._min_val = -(2**(bits - 1))
+
+        # Input Signals
+        self.data_in = Signal(signed(bits))
+        self.clk = Signal(1)
+        self.rst = Signal(1)
+        # Output Signals
+        self.pdm_out = Signal(1)
+    
+    def elaborate(self, platform):
+        m = Module()
+
+        # Boilerplate: Set up synchronous clock domain
+        m.domains.sync = cd_sync = ClockDomain(local=True)
+        m.d.comb += [
+            cd_sync.clk.eq(self.clk),
+            cd_sync.rst.eq(self.rst),
+        ]
+
+        # Feedback Loop
+        error = Signal(signed(len(self.data_in) + 1))
+        error_out = Signal(signed(len(self.data_in)))
+        data_out = Signal(signed(len(self.data_in)), reset=self._min_val)
+        m.d.sync += error.eq(self.data_in + (error_out - data_out))
+
+        # Saturating Error Add
+        with m.If(error > Const(self._max_val)):
+            m.d.comb += error_out.eq(Const(self._max_val))
+        with m.Elif(error < Const(self._min_val)):
+            m.d.comb += error_out.eq(Const(self._min_val))
+        with m.Else():
+            # As long as we are within min/max value, the upper two sign bits will be the same.
+            # So we can just truncate the error and not lose anything
+            m.d.comb += error_out.eq(error[0:len(error)-1])
+
+        # PDM It
+        with m.If(error_out >= Const(0)):
+            m.d.comb += data_out.eq(Const(self._max_val))
+            m.d.sync += self.pdm_out.eq(Const(1))
+        with m.Else():
+            m.d.comb += data_out.eq(Const(self._min_val))
+            m.d.sync += self.pdm_out.eq(Const(0))
+
+        return m
 
 class Top(Elaboratable):
     def __init__(self):
@@ -123,7 +172,8 @@ class Top(Elaboratable):
         m.d.comb += cs_signal.eq(self.uio_in[4])
         m.submodules.spi = self.spi_bus_in = SPIShiftReg(width=8)
         m.d.comb += [
-            self.spi_bus_in.reset.eq(~self.rst_n),
+            self.spi_bus_in.clk.eq(ClockSignal("sync")),
+            self.spi_bus_in.rst.eq(ResetSignal("sync")),
             self.spi_bus_in.cs_l.eq(cs_signal),
             self.spi_bus_in.sclk.eq(self.uio_in[5]),
             self.spi_bus_in.sdi.eq(self.uio_in[6]),
@@ -153,33 +203,14 @@ class Top(Elaboratable):
             m.d.sync += self.ui_in_sel.eq(ui_in_sel_mux)
 
         ## PDM Implementation
-        # Feedback Loop Variables
-        self.data_in = Signal(signed(8))
-        self.error = Signal(signed(9))
-        self.error_out = Signal(signed(8))
-        self.data_out = Signal(signed(8), reset=-128)
-
-        # Center the data
-        m.d.comb += self.data_in.eq(self.ui_in_sel - Const(-128))
-        m.d.sync += self.error.eq(self.data_in + (self.error_out - self.data_out))
-
-        # Saturating Error Add
-        with m.If(self.error > Const(127)):
-            m.d.comb += self.error_out.eq(Const(127))
-        with m.Elif(self.error < Const(-128)):
-            m.d.comb += self.error_out.eq(Const(-128))
-        with m.Else():
-            m.d.comb += self.error_out.eq(self.error[0:8])
-
-        # PDM It
-        self.pdm_out = Signal(1)
-        with m.If(self.error_out >= Const(0)):
-            m.d.comb += self.data_out.eq(Const(127))
-            m.d.sync += self.pdm_out.eq(Const(1))
-        with m.Else():
-            m.d.comb += self.data_out.eq(Const(-128))
-            m.d.sync += self.pdm_out.eq(Const(0))
-        m.d.comb += self.uo_out[0].eq(self.pdm_out)
+        # Connect the signals
+        m.submodules.pdm = pdm = PDMGenerator(bits=8)
+        m.d.comb += [
+            pdm.clk.eq(ClockSignal("sync")),
+            pdm.rst.eq(ResetSignal("sync")),
+            pdm.data_in.eq(self.ui_in_sel - Const(-128)), # Center the data
+            self.uo_out[0].eq(pdm.pdm_out),  # Output PDM waveform
+        ]
 
         ## PWM Implementation
         # PWM It
