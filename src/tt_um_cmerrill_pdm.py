@@ -156,74 +156,74 @@ class Top(Elaboratable):
         ]
 
         # Select how we get the input data (parallel, SPI)
-        self.ui_in_sel = Signal(unsigned(8))
+        ui_in_sel = Signal(unsigned(8))
         ui_in_sel_mux = Signal(unsigned(8))
         with m.Switch(self.uio_in[7]):
             with m.Case(Const(0)): 
                 m.d.comb += [
                     ui_in_sel_mux.eq(self.ui_in),
-                    # self.ui_in_sel.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
+                    # ui_in_sel.eq(Const(60, 8)),  # Testbench: Set fixed PDM value
                 ]
             with m.Case(Const(1)):
                 m.d.comb += ui_in_sel_mux.eq(self.spi_bus_in.dout),
         # Latch Data on low to high edge on CS_L/Latch
         with m.If(cs_edge_detect.out):
-            m.d.sync += self.ui_in_sel.eq(ui_in_sel_mux)
+            m.d.sync += ui_in_sel.eq(ui_in_sel_mux)
 
         ## PDM Implementation
         # Connect the signals
         m.submodules.pdm = pdm = PDMGenerator(bits=8)
         m.d.comb += [
-            pdm.data_in.eq(self.ui_in_sel - Const(-128)), # Center the data
+            pdm.data_in.eq(ui_in_sel - Const(-128)), # Center the data
             self.uo_out[0].eq(pdm.pdm_out),  # Output PDM waveform
         ]
 
         ## PWM Implementation
         # PWM It
         # FIXME: Do we need to buffer the input based on full PWM loops?
-        self.pwm_counter = Signal(unsigned(8))
-        self.pwm_out = Signal(1)
-        with m.If(self.pwm_counter <= self.ui_in_sel):
-            m.d.sync += self.pwm_out.eq(Const(1))
+        pwm_counter = Signal(unsigned(8))
+        pwm_out = Signal(1)
+        with m.If(pwm_counter <= ui_in_sel):
+            m.d.sync += pwm_out.eq(Const(1))
         with m.Else():
-            m.d.sync += self.pwm_out.eq(Const(0))
-        m.d.sync += self.pwm_counter.eq(self.pwm_counter + 1)
-        m.d.comb += self.uo_out[4].eq(self.pwm_out)
+            m.d.sync += pwm_out.eq(Const(0))
+        m.d.sync += pwm_counter.eq(pwm_counter + 1)
+        m.d.comb += self.uo_out[4].eq(pwm_out)
 
         ## PFM Implementations
         # PFM(?) It
         # FIXME: Do we need to buffer the input based on full loops?
-        self.pfm_counter = Signal(unsigned(9))
-        self.pfm_out = Signal(1)
-        self.pfm_in = Signal(unsigned(8))
-        m.d.comb += self.pfm_in.eq(Const(255) - self.ui_in_sel)
-        with m.If(((self.pfm_counter >> 1) >= self.pfm_in)
-                    & (self.pfm_counter[0] == Const(1))): # Divide clock by two so that we always have a square wave
-            m.d.sync += self.pfm_out.eq(Const(1))
-            m.d.sync += self.pfm_counter.eq(Const(0))
+        pfm_counter = Signal(unsigned(9))
+        pfm_out = Signal(1)
+        pfm_in = Signal(unsigned(8))
+        m.d.comb += pfm_in.eq(Const(255) - ui_in_sel)
+        with m.If(((pfm_counter >> 1) >= pfm_in)
+                    & (pfm_counter[0] == Const(1))): # Divide clock by two so that we always have a square wave
+            m.d.sync += pfm_out.eq(Const(1))
+            m.d.sync += pfm_counter.eq(Const(0))
         with m.Else():
-            m.d.sync += self.pfm_out.eq(Const(0))
-            m.d.sync += self.pfm_counter.eq(self.pfm_counter + 1)
-        m.d.comb += self.uo_out[2].eq(self.pfm_out)
+            m.d.sync += pfm_out.eq(Const(0))
+            m.d.sync += pfm_counter.eq(pfm_counter + 1)
+        m.d.comb += self.uo_out[2].eq(pfm_out)
 
         # PFM(?) It, V2
         # FIXME: Do we need to buffer the input based on full loops?
         #        Does that even make sense with PFM like this?
-        self.pfm2_counter = Signal(unsigned(9))
-        self.pfm2_out = Signal(1)
-        self.pfm2_in = Signal(unsigned(9))
-        m.d.comb += self.pfm2_in.eq((Const(255) - self.ui_in_sel) << 1)
-        with m.If(self.pfm2_counter >= (self.pfm2_in >> 1)):
-            m.d.sync += self.pfm2_out.eq(Const(1))
+        pfm2_counter = Signal(unsigned(9))
+        pfm2_out = Signal(1)
+        pfm2_in = Signal(unsigned(9))
+        m.d.comb += pfm2_in.eq((Const(255) - ui_in_sel) << 1)
+        with m.If(pfm2_counter >= (pfm2_in >> 1)):
+            m.d.sync += pfm2_out.eq(Const(1))
         with m.Else():
-            m.d.sync += self.pfm2_out.eq(Const(0))
+            m.d.sync += pfm2_out.eq(Const(0))
         # Counter
-        with m.If(self.pfm2_counter > self.pfm2_in):
-            m.d.sync += self.pfm2_counter.eq(Const(0))
+        with m.If(pfm2_counter > pfm2_in):
+            m.d.sync += pfm2_counter.eq(Const(0))
         with m.Else():
-            m.d.sync += self.pfm2_counter.eq(self.pfm2_counter + 1)
+            m.d.sync += pfm2_counter.eq(pfm2_counter + 1)
         # Output
-        m.d.comb += self.uo_out[3].eq(self.pfm2_out)
+        m.d.comb += self.uo_out[3].eq(pfm2_out)
             
         # Boilerplate: Return module
         return m
