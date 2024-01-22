@@ -13,24 +13,15 @@ class EdgeDetect(Elaboratable):
     def __init__(self, edge="pos"):
         self.inp = Signal(1)
         self.out = Signal(1)
-        self.clk = Signal(1)
-        self.rst = Signal(1)
         self._edge = edge
 
     def elaborate(self, platform):
         m = Module()
 
-        # Setup clock domain
-        m.domains.clock_domain = clock_domain = ClockDomain(local=True)
-        m.d.comb += [
-            clock_domain.clk.eq(self.clk),
-            clock_domain.rst.eq(self.rst),
-        ]
-
         # Edge detect - comapred delayed signal with current value
         # Output is a single-clock width pulse on an edge
         input_buf = Signal(1)
-        m.d.clock_domain += input_buf.eq(self.inp)
+        m.d.sync += input_buf.eq(self.inp)
         if self._edge == "pos":
             m.d.comb += self.out.eq((~input_buf) & self.inp)
         elif self._edge == "neg":
@@ -50,22 +41,13 @@ class SPIShiftReg(Elaboratable):
         self.sdi = Signal(1)
         self.sclk = Signal(1)
         self.cs_l = Signal(1)
-        # Standard clock domain signals
         self.rst = Signal(1)
-        self.clk = Signal(1)
         # Output signals
         self.dout = Signal(width)
         self.cs_out = Signal(1)
     
     def elaborate(self, platform):
         m = Module()
-
-        # Boilerplate: Set up sync clock domain
-        m.domains.sync = sync_domain = ClockDomain(local=True)
-        m.d.comb += [
-            sync_domain.clk.eq(self.clk),
-            sync_domain.rst.eq(self.rst),
-        ]
 
         # Boilerplate: Set up sclk clock domain
         m.domains.spi = sclk_domain = ClockDomain("spi", local=True, clk_edge=self._edge)
@@ -97,20 +79,11 @@ class PDMGenerator(Elaboratable):
 
         # Input Signals
         self.data_in = Signal(signed(bits))
-        self.clk = Signal(1)
-        self.rst = Signal(1)
         # Output Signals
         self.pdm_out = Signal(1)
     
     def elaborate(self, platform):
         m = Module()
-
-        # Boilerplate: Set up synchronous clock domain
-        m.domains.sync = cd_sync = ClockDomain(local=True)
-        m.d.comb += [
-            cd_sync.clk.eq(self.clk),
-            cd_sync.rst.eq(self.rst),
-        ]
 
         # Feedback Loop
         error = Signal(signed(len(self.data_in) + 1))
@@ -172,7 +145,6 @@ class Top(Elaboratable):
         m.d.comb += cs_signal.eq(self.uio_in[4])
         m.submodules.spi = self.spi_bus_in = SPIShiftReg(width=8)
         m.d.comb += [
-            self.spi_bus_in.clk.eq(ClockSignal("sync")),
             self.spi_bus_in.rst.eq(ResetSignal("sync")),
             self.spi_bus_in.cs_l.eq(cs_signal),
             self.spi_bus_in.sclk.eq(self.uio_in[5]),
@@ -182,8 +154,6 @@ class Top(Elaboratable):
         # CS Rising Edge Detector
         m.submodules.cs_edge_detect = cs_edge_detect = EdgeDetect("pos")
         m.d.comb += [
-            cs_edge_detect.clk.eq(ClockSignal("sync")),
-            cs_edge_detect.rst.eq(ResetSignal("sync")),
             cs_edge_detect.inp.eq(cs_signal),
         ]
 
@@ -206,8 +176,6 @@ class Top(Elaboratable):
         # Connect the signals
         m.submodules.pdm = pdm = PDMGenerator(bits=8)
         m.d.comb += [
-            pdm.clk.eq(ClockSignal("sync")),
-            pdm.rst.eq(ResetSignal("sync")),
             pdm.data_in.eq(self.ui_in_sel - Const(-128)), # Center the data
             self.uo_out[0].eq(pdm.pdm_out),  # Output PDM waveform
         ]
